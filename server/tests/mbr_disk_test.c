@@ -37,7 +37,7 @@ int main(void) {
     MbrTable write_table; char write_tag[40];
     T(mbr_probe_fd(wfd,sectors,512,&write_table,write_tag,sizeof write_tag)==MBR_BAD_ARGUMENT);
     T(close(wfd)==0);
-    int fd=open(path,O_RDONLY|O_CLOEXEC); T(fd>=0); unlink(path);
+    int fd=open(path,O_RDONLY|O_CLOEXEC); T(fd>=0);
     if(fd<0) return 1;
 
     MbrTable table; char tag[40];
@@ -53,11 +53,15 @@ int main(void) {
     T(mbr_probe_fd(-1,sectors,512,&table,badtag,sizeof badtag)==MBR_BAD_ARGUMENT);
     T(mbr_probe_fd(fd,sectors,512,&table,badtag,4)==MBR_BAD_ARGUMENT);
 
+    T(close(fd)==0);
+    wfd=open(path,O_WRONLY|O_CLOEXEC); T(wfd>=0);
     ebr[446+4]=0x07;
-    T(pwrite(fd,ebr,512,(off_t)(20480*512))==512);
+    T(pwrite(wfd,ebr,512,(off_t)(20480*512))==512);
+    T(fsync(wfd)==0); T(close(wfd)==0);
+    fd=open(path,O_RDONLY|O_CLOEXEC); T(fd>=0);
     T(mbr_probe_fd(fd,sectors,512,&table,badtag,sizeof badtag)==MBR_OK);
     T(strcmp(tag,badtag)!=0);
-    close(fd);
+    close(fd); unlink(path);
     printf("%d checks, %d failures\n",checks,failures);
     return failures ? 1 : 0;
 }
