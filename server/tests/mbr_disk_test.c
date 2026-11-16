@@ -2,6 +2,7 @@
 #include "install/mbr_disk.h"
 #include <fcntl.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 
@@ -17,12 +18,12 @@ static void entry(unsigned char *e, unsigned type, unsigned start, unsigned coun
 }
 
 int main(void) {
-    FILE *tmp=tmpfile();
-    T(tmp != NULL);
-    if (!tmp) return 1;
-    int fd=fileno(tmp);
+    char path[]="/tmp/lordos-mbr-probe-XXXXXX";
+    int wfd=mkstemp(path);
+    T(wfd >= 0);
+    if (wfd < 0) return 1;
     const unsigned long long sectors=65536;
-    T(ftruncate(fd, (off_t)(sectors*512)) == 0);
+    T(ftruncate(wfd, (off_t)(sectors*512)) == 0);
 
     unsigned char mbr[512]={0}, ebr[512]={0}, check[512];
     entry(mbr+446, 0x83, 2048, 16384);
@@ -30,8 +31,11 @@ int main(void) {
     mbr[510]=0x55; mbr[511]=0xaa;
     entry(ebr+446, 0x83, 1, 8192);
     ebr[510]=0x55; ebr[511]=0xaa;
-    T(pwrite(fd,mbr,512,0)==512);
-    T(pwrite(fd,ebr,512,(off_t)(20480*512))==512);
+    T(pwrite(wfd,mbr,512,0)==512);
+    T(pwrite(wfd,ebr,512,(off_t)(20480*512))==512);
+    T(fsync(wfd)==0); T(close(wfd)==0);
+    int fd=open(path,O_RDONLY|O_CLOEXEC); T(fd>=0); unlink(path);
+    if(fd<0) return 1;
 
     MbrTable table; char tag[40];
     MbrStatus st=mbr_probe_fd(fd,sectors,512,&table,tag,sizeof tag);
@@ -50,7 +54,7 @@ int main(void) {
     T(pwrite(fd,ebr,512,(off_t)(20480*512))==512);
     T(mbr_probe_fd(fd,sectors,512,&table,badtag,sizeof badtag)==MBR_OK);
     T(strcmp(tag,badtag)!=0);
-    fclose(tmp);
+    close(fd);
     printf("%d checks, %d failures\n",checks,failures);
     return failures ? 1 : 0;
 }
