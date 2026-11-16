@@ -72,4 +72,4 @@ jobs:
         run: /tmp/mbr-disk-test
 
       - name: Compile installer integration test target
-        run: make -C server build/install-plan-test
+        run: make -C server SESSIOND=0 build/install-plan-test
