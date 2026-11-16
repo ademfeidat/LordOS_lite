@@ -15,6 +15,9 @@ on:
       - "server/src/install/mbr.c"
       - "server/src/install/mbr.h"
       - "server/tests/mbr_test.c"
+      - "server/src/install/disk_snapshot.c"
+      - "server/src/install/disk_snapshot.h"
+      - "server/tests/disk_snapshot_test.c"
       - ".github/workflows/installer-mbr.yml"
   workflow_dispatch:
 
@@ -36,9 +39,9 @@ jobs:
         run: /tmp/mbr-test
       - name: Compile common snapshot adapter
         run: |
-          cc -std=c11 -Wall -Wextra -Werror -fsanitize=address,undefined \\
-            -fno-sanitize-recover=all -fno-omit-frame-pointer \\
-            -Iserver/src -o /tmp/disk-snapshot-test \\
+          cc -std=c11 -Wall -Wextra -Werror -fsanitize=address,undefined \
+            -fno-sanitize-recover=all -fno-omit-frame-pointer \
+            -Iserver/src -o /tmp/disk-snapshot-test \
             server/tests/disk_snapshot_test.c server/src/install/disk_snapshot.c
       - name: Run common snapshot tests
         run: /tmp/disk-snapshot-test
