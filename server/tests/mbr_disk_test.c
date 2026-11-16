@@ -33,7 +33,10 @@ int main(void) {
     ebr[510]=0x55; ebr[511]=0xaa;
     T(pwrite(wfd,mbr,512,0)==512);
     T(pwrite(wfd,ebr,512,(off_t)(20480*512))==512);
-    T(fsync(wfd)==0); T(close(wfd)==0);
+    T(fsync(wfd)==0);
+    MbrTable write_table; char write_tag[40];
+    T(mbr_probe_fd(wfd,sectors,512,&write_table,write_tag,sizeof write_tag)==MBR_BAD_ARGUMENT);
+    T(close(wfd)==0);
     int fd=open(path,O_RDONLY|O_CLOEXEC); T(fd>=0); unlink(path);
     if(fd<0) return 1;
 
