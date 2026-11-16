@@ -303,7 +303,7 @@ void install_act_disks(const AdminReq *r, const char *arg, size_t len) {
         mpp_probe(k->name, &mp);
         if (mp.fp.esps == 1) { fsp_esp_count(&mp.fp.table, &espnum); fsp_part_path(k->name, espnum, espname, sizeof espname); }
         fprintf(f, ",\"ptable\":"); json_str(f, fsp_mbr_name(mp.fp.facts.mbr));
-        fprintf(f, ",\"mbrProbeOk\":%s,\"mbrTag\":", mbr_probe_ok ? "true" : "false");
+        fprintf(f, ",\"mbrProbeOk\":%s,\"mbrLsec\":%u,\"mbrTag\":", mbr_probe_ok ? "true" : "false", mbr_probe_ok ? logical_sector_size : 0);
         json_str(f, mbr_probe_ok ? mbr_tag : "");
         fprintf(f, ",\"mbrParts\":[");
         if (mbr_probe_ok) for (unsigned q = 0; q < mbr_snapshot.partition_count; q++) {
