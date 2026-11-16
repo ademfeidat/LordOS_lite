@@ -1,0 +1,33 @@
+name: Installer MBR parser
+on:
+  push:
+    branches: [compatibility/legacy-bios-mbr]
+    paths:
+      - "server/src/install/mbr.c"
+      - "server/src/install/mbr.h"
+      - "server/tests/mbr_test.c"
+      - ".github/workflows/installer-mbr.yml"
+  pull_request:
+    paths:
+      - "server/src/install/mbr.c"
+      - "server/src/install/mbr.h"
+      - "server/tests/mbr_test.c"
+      - ".github/workflows/installer-mbr.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  mbr-parser:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile parser with warnings and sanitizers
+        run: |
+          cc -std=c11 -Wall -Wextra -Werror -fsanitize=address,undefined \
+            -fno-sanitize-recover=all -fno-omit-frame-pointer \
+            -Iserver/src -o /tmp/mbr-test \
+            server/tests/mbr_test.c server/src/install/mbr.c
+      - name: Run read-only parser tests
+        run: /tmp/mbr-test
