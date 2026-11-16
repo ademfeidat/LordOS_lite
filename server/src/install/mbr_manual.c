@@ -11,7 +11,8 @@ static const DsPartition *find_part(const DiskSnapshot *d, unsigned number) {
 
 static int snapshot_valid(const DiskSnapshot *d) {
     if (!d || d->kind != DS_TABLE_MBR || d->logical_sector_size != 512 ||
-        d->total_sectors < 2 || d->partition_count > DS_MAX_PARTITIONS)
+        d->total_sectors < 2 || d->partition_count > DS_MAX_PARTITIONS ||
+        (d->has_extended != 0 && d->has_extended != 1))
         return 0;
     if (d->has_extended) {
         if (d->extended_first_lba > d->extended_last_lba ||
@@ -22,7 +23,8 @@ static int snapshot_valid(const DiskSnapshot *d) {
         const DsPartition *p = &d->partitions[i];
         if (!p->number || p->number > DS_MAX_PARTITIONS ||
             p->first_lba > p->last_lba || p->last_lba >= d->total_sectors ||
-            p->is_esp || (p->is_logical ? p->number < 5 : p->number > 4))
+            p->is_esp || p->is_logical > 1 ||
+            (p->is_logical ? p->number < 5 : p->number > 4))
             return 0;
         if (p->is_logical && (!d->has_extended ||
             p->first_lba < d->extended_first_lba ||
