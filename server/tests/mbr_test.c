@@ -14,6 +14,46 @@ static void entry(unsigned char *s, unsigned slot, unsigned type, unsigned start
     memset(e,0,16); e[0]=(unsigned char)boot; e[4]=(unsigned char)type;
     put32(e+8,start); put32(e+12,count);
 }
+typedef struct { uint64_t lba[2]; unsigned char sector[2][512]; unsigned count; } EbrFixture;
+static int read_ebr(void *context, uint64_t lba, uint8_t out[512]) {
+    EbrFixture *f = context;
+    for (unsigned i = 0; i < f->count; i++)
+        if (f->lba[i] == lba) { memcpy(out, f->sector[i], 512); return 0; }
+    return -1;
+}
+static void ebr_entry(unsigned char *s, unsigned slot, unsigned type,
+                      unsigned start, unsigned count) {
+    entry(s, slot, type, start, count, 0);
+}
+static void ebr_tests(void) {
+    unsigned char mbr[512] = {0};
+    MbrTable t;
+    EbrFixture f;
+    memset(&f, 0, sizeof f);
+    mbr[510] = 0x55; mbr[511] = 0xaa;
+    entry(mbr, 0, 0x0f, 1000, 50000, 0);
+    T(mbr_parse_sector(mbr, 100000, &t) == MBR_OK);
+    f.count = 2; f.lba[0] = 1000; f.lba[1] = 3000;
+    f.sector[0][510] = f.sector[1][510] = 0x55;
+    f.sector[0][511] = f.sector[1][511] = 0xaa;
+    ebr_entry(f.sector[0], 0, 0x83, 1, 1000);
+    ebr_entry(f.sector[0], 1, 0x0f, 2000, 48000);
+    ebr_entry(f.sector[1], 0, 0x07, 1, 2000);
+    T(mbr_read_logicals(&t, 100000, read_ebr, &f) == MBR_OK);
+    T(t.logical_count == 2 && t.logical[0].slot == 5 && t.logical[0].first_lba == 1001);
+    T(t.logical[1].slot == 6 && t.logical[1].first_lba == 3001);
+
+    ebr_entry(f.sector[1], 1, 0x0f, 2000, 48000);
+    T(mbr_read_logicals(&t, 100000, read_ebr, &f) == MBR_EBR_LOOP);
+    memset(f.sector[1], 0, 512);
+    T(mbr_read_logicals(&t, 100000, read_ebr, &f) == MBR_EBR_CHAIN);
+    T(mbr_read_logicals(&t, 100000, NULL, &f) == MBR_BAD_ARGUMENT);
+    f.count = 1; f.lba[0] = 1000;
+    memset(f.sector[0], 0, 512); f.sector[0][510] = 0x55; f.sector[0][511] = 0xaa;
+    ebr_entry(f.sector[0], 0, 0x83, 1, 60000);
+    T(mbr_read_logicals(&t, 100000, read_ebr, &f) == MBR_EBR_CHAIN);
+}
+
 int main(void) {
     unsigned char s[512]; MbrTable t;
     memset(s,0,sizeof s); s[510]=0x55; s[511]=0xaa;
