@@ -38,10 +38,6 @@ jobs:
       - name: Run read-only parser tests
         run: /tmp/mbr-test
       - name: Compile common snapshot adapter
-        run: |
-          cc -std=c11 -Wall -Wextra -Werror -fsanitize=address,undefined \
-            -fno-sanitize-recover=all -fno-omit-frame-pointer \
-            -Iserver/src -o /tmp/disk-snapshot-test \
-            server/tests/disk_snapshot_test.c server/src/install/disk_snapshot.c
+        run: cc -std=c11 -Wall -Wextra -Werror -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer -Iserver/src -o /tmp/disk-snapshot-test server/tests/disk_snapshot_test.c server/src/install/disk_snapshot.c
       - name: Run common snapshot tests
         run: /tmp/disk-snapshot-test
