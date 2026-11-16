@@ -89,11 +89,28 @@ MbrStatus mbr_read_logicals(MbrTable *table, uint64_t disk_sectors,
                             MbrReadSector read_sector, void *context) {
     if (!table || disk_sectors < 2) return MBR_BAD_ARGUMENT;
     table->logical_count = 0;
+    if (table->primary_count > MBR_PRIMARY_SLOTS) return MBR_BAD_ARGUMENT;
+    for (unsigned i = 0; i < table->primary_count; i++) {
+        const MbrPartition *p = &table->primary[i];
+        if (!p->type || !p->first_lba || !p->sectors ||
+            (uint64_t)p->first_lba >= disk_sectors ||
+            (uint64_t)p->sectors > disk_sectors - p->first_lba ||
+            (uint64_t)p->sectors - 1 > UINT32_MAX - (uint64_t)p->first_lba)
+            return MBR_OUT_OF_RANGE;
+    }
     if (!table->has_extended) return MBR_OK;
     if (!read_sector) return MBR_BAD_ARGUMENT;
 
     const uint64_t base = table->extended.first_lba;
-    const uint64_t limit = base + table->extended.sectors - 1;
+    const uint64_t ext_count = table->extended.sectors;
+    if (!extended_type(table->extended.type) || !base || !ext_count ||
+        base >= disk_sectors || ext_count > disk_sectors - base ||
+        ext_count - 1 > UINT32_MAX - base)
+        return MBR_OUT_OF_RANGE;
+    const uint64_t limit = base + ext_count - 1;
+    for (unsigned i = 0; i < table->primary_count; i++)
+        if (extent_overlaps(base, ext_count, table->primary[i].first_lba,
+                            table->primary[i].sectors)) return MBR_OVERLAP;
     uint64_t ebr_lba = base;
     uint64_t visited[MBR_LOGICAL_MAX];
     unsigned visited_count = 0;
