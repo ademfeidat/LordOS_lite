@@ -3,7 +3,7 @@ import { emptyMbrManual, mbrPartitions, setMbrRole, reviewMbrManual, MBR_LIMITS 
 
 const GiB = 1024 ** 3;
 const disk = {
-  name: 'sda', lsec: 512, mbrProbeOk: true, mbrTag: 'mbr-tag-abc',
+  name: 'sda', lsec: 0, mbrLsec: 512, mbrProbeOk: true, mbrTag: 'mbr-tag-abc',
   mbrParts: [
     { name: 'sda1', num: 1, start: 2048, end: 2048 + 20 * GiB / 512 - 1, type: 0x83, logical: false },
     { name: 'sda5', num: 5, start: 2048 + 20 * GiB / 512, end: 2048 + 36 * GiB / 512 - 1, type: 0x83, logical: true },
@@ -31,7 +31,7 @@ assert.ok(reviewMbrManual(disk, setMbrRole(s, 'rootPart', 6)).errors.includes('i
 assert.ok(reviewMbrManual(disk, setMbrRole(s, 'swapPart', 5)).errors.includes('install.manual.mbr.swapType'));
 assert.ok(reviewMbrManual(disk, { ...s, homeFormat: true }).fields.homeFormat);
 assert.ok(reviewMbrManual({ ...disk, mbrProbeOk: false }, s).errors.includes('install.manual.mbr.unavailable'));
-assert.ok(reviewMbrManual({ ...disk, lsec: 4096 }, s).errors.includes('install.manual.mbr.unavailable'));
+assert.ok(reviewMbrManual({ ...disk, mbrLsec: 4096 }, s).errors.includes('install.manual.mbr.unavailable'));
 assert.ok(reviewMbrManual({ ...disk, mbrTag: '' }, s).errors.includes('install.manual.mbr.unavailable'));
 const tooSmall = { ...disk, mbrParts: disk.mbrParts.map((p) => p.num === 1 ? { ...p, end: p.start + MBR_LIMITS.root / 512 - 2 } : p) };
 assert.ok(reviewMbrManual(tooSmall, s).errors.includes('install.manual.mbr.rootTooSmall'));
