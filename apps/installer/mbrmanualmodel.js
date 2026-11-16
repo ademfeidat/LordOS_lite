@@ -13,7 +13,7 @@ const bytes = (disk, p) => (p.end - p.start + 1) * disk.lsec;
 export const emptyMbrManual = () => ({ rootPart: 0, homePart: 0, swapPart: 0, homeFormat: false });
 
 export function mbrPartitions(disk) {
-  if (!disk || disk.mbrProbeOk !== true || !disk.mbrTag || disk.lsec !== 512 ||
+  if (!disk || disk.mbrProbeOk !== true || !disk.mbrTag || disk.mbrLsec !== 512 ||
       !Array.isArray(disk.mbrParts)) return [];
   const fsByNum = new Map((disk.parts || []).filter((p) => num(p.num)).map((p) => [p.num, p.fs || p.fstype || '']));
   return disk.mbrParts
@@ -38,7 +38,7 @@ export function reviewMbrManual(disk, selection) {
   const parts = mbrPartitions(disk);
   const byNum = new Map(parts.map((p) => [p.num, p]));
   const errors = [];
-  if (!disk || disk.mbrProbeOk !== true || !disk.mbrTag || disk.lsec !== 512)
+  if (!disk || disk.mbrProbeOk !== true || !disk.mbrTag || disk.mbrLsec !== 512)
     errors.push('install.manual.mbr.unavailable');
   if (!selection || !num(selection.rootPart)) errors.push('install.manual.mbr.noRoot');
   const root = byNum.get(selection?.rootPart);
