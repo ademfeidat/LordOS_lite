@@ -291,3 +291,29 @@ work is backend plan parsing and a fresh read-only probe/tag comparison in
 `install-run`, followed by a separately tested mount/fstab path and BIOS GRUB
 backup/rollback strategy. The MBR manual install option must remain hidden until
 those protections are complete.
+
+
+## BIOS GRUB shared-install blocker review (2026-11-17)
+
+A source-level review of `server/src/install/install.c` confirms that the existing
+`grub-install --target=i386-pc <disk>` call is inside the non-shared (erase)
+bootloader branch only. The shared-install branch is currently EFI-only: it
+installs an EFI loader and creates an NVRAM entry with `efibootmgr`. Therefore
+the existing shared/manual path cannot simply be reused for Legacy BIOS.
+
+Before a BIOS/MBR manual mode can write boot code, it must independently prove:
+the target is a pure DOS/MBR disk (not hybrid/protective), the BIOS is the active
+boot mode, the post-MBR embedding gap is large enough for the selected GRUB
+core image, the disk is not mounted/in use, and the selected partitions still
+match the current MBR/EBR fingerprint. A first-partition-at-1MiB heuristic is
+not sufficient evidence by itself.
+
+The implementation will need a durable backup of sector 0 (including disk
+signature and partition table bytes) and the exact embedding sectors GRUB may
+overwrite, with byte-level verification that partition entries remain intact.
+Failure after writing boot code must attempt a tested rollback and report
+whether restoration succeeded. Existing boot managers may be replaced; this
+must be an explicit user confirmation, not described as harmless. Until a
+disposable-image/VM test proves backup, install, verify, and rollback behavior,
+the MBR manual mode remains unavailable. No GRUB write or real-disk boot-code
+change was made in this milestone.
