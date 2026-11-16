@@ -11,6 +11,9 @@ on:
       - "server/src/install/mbr_manual.c"
       - "server/src/install/mbr_manual.h"
       - "server/tests/mbr_manual_test.c"
+      - "server/src/install/mbr_disk.c"
+      - "server/src/install/mbr_disk.h"
+      - "server/tests/mbr_disk_test.c"
       - "server/tests/disk_snapshot_test.c"
       - "server/src/install/mbr_manual.c"
       - "server/src/install/mbr_manual.h"
@@ -52,3 +55,8 @@ jobs:
         run: cc -std=c11 -Wall -Wextra -Werror -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer -Iserver/src -o /tmp/mbr-manual-test server/tests/mbr_manual_test.c server/src/install/mbr_manual.c
       - name: Run MBR manual-selection tests
         run: /tmp/mbr-manual-test
+
+      - name: Compile read-only MBR disk probe
+        run: cc -std=c11 -D_FILE_OFFSET_BITS=64 -Wall -Wextra -Werror -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer -Iserver/src -o /tmp/mbr-disk-test server/tests/mbr_disk_test.c server/src/install/mbr_disk.c server/src/install/mbr.c
+      - name: Run read-only MBR disk probe tests
+        run: /tmp/mbr-disk-test
