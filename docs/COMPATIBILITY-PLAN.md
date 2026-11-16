@@ -317,3 +317,13 @@ must be an explicit user confirmation, not described as harmless. Until a
 disposable-image/VM test proves backup, install, verify, and rollback behavior,
 the MBR manual mode remains unavailable. No GRUB write or real-disk boot-code
 change was made in this milestone.
+
+
+### MBR sector-size field correction
+
+The installer disk JSON now exposes `mbrLsec` from the actual sysfs logical-sector
+size used by the read-only MBR probe. The separate MBR selection model uses this
+field for both its 512-byte support gate and partition-size calculations; it no
+longer reuses `lsec`, which belongs to the GPT/manual-partition probe and may be
+zero when GPT probing rejects a DOS disk. The MBR model remains hidden from the
+wizard and cannot authorize installation.
