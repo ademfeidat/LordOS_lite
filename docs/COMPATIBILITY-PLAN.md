@@ -168,8 +168,8 @@ run 43961078268 completed successfully: strict compilation and the Address/Undef
 sanitizer test job both passed.
 
 This remains read-only parser hardening. The installer still uses its existing GPT-only
-snapshot and `sgdisk` write path; no MBR table is yet exposed to the installer and no
-disk-writing behavior has been enabled.
+snapshot and `sgdisk` write path. MBR discovery is now reported separately by `install-disks`,
+but it is not used to authorize or perform any disk-writing operation.
 
 
 ## Common read-only disk snapshot milestone (2026-11-16)
@@ -210,9 +210,9 @@ the installer UI or `install-run`. The current GPT manual-install route remains
 unchanged. The MBR route is BIOS-only at this stage; UEFI-on-MBR remains gated
 until ESP discovery and firmware behavior can be proven.
 
-Tests were added in `server/tests/mbr_manual_test.c`, and the test is included
-in `make test` and the isolated GitHub Actions workflow. This new test has been
-committed but is awaiting its first CI result.
+Tests were added in `server/tests/mbr_manual_test.c` and included in `make test`
+and the isolated GitHub Actions workflow. GitHub Actions run 43964488361 passed
+the parser, snapshot adapter, manual-selection validator, and disk-probe suites.
 
 
 ## Manual partitioning: current installer boundary
@@ -258,7 +258,15 @@ snapshot-conversion tests. Each compiled with `-Wall -Wextra -Werror` and
 Address/UndefinedBehavior sanitizers. The new source files are also included in
 the server and installer test source lists.
 
-This is still a read-only discovery layer. It is not yet wired to
-`install-disks`, the wizard's MBR-specific selection UI, `install-run`, file
-system formatting/mounting, or GRUB installation. Therefore Legacy BIOS/MBR
-manual installation is not yet enabled.
+The read-only probe is now called by `install-disks` for each candidate disk.
+When a pure DOS/MBR table is valid, the response includes `mbrProbeOk`, an MBR/EBR
+fingerprint, and `mbrParts` containing partition number, start/end LBA, DOS type,
+and primary/logical identity. The probe opens the device read-only and rejects
+4Kn logical-sector layouts. The installer integration target compiled successfully
+in GitHub Actions run 43964999046 with `SESSIOND=0` to bypass unrelated optional
+remote-desktop build dependencies.
+
+The wizard does not yet consume these fields. The MBR-specific selection UI,
+backend plan revalidation, formatting/mounting, fstab generation, and a proven
+BIOS GRUB strategy are still outstanding. Therefore Legacy BIOS/MBR manual
+installation is not yet enabled; the existing GPT/UEFI manual path is unchanged.
