@@ -375,7 +375,7 @@ typedef struct { char mode[16], disk[32], user[33], fullname[128], password[257]
                  char password_hash[256], ssh_key[1024]; int autologin, has_extra;
                  /* mode manual (manual.c): partitions to delete and create, the roles of existing ones */
                  char del[MP_LIST_MAX + 1], create[MP_LIST_MAX + 1], table_tag[64];
-                 long root_part, home_part, swap_part, esp_part; int home_format, esp_format; } Plan;
+                 long root_part, home_part, swap_part, esp_part; int root_format, root_format_seen, home_format, esp_format; char mbr_tag[64]; } Plan;
 
 static int unattended;
 void install_set_unattended(int on) { unattended = on; }
@@ -475,6 +475,7 @@ static int parse_plan(const char *s, Plan *pl) {
                 { "kblayout", pl->kblayout, sizeof pl->kblayout }, { "kbvariant", pl->kbvariant, sizeof pl->kbvariant },
                 { "passwordHash", pl->password_hash, sizeof pl->password_hash }, { "sshKey", pl->ssh_key, sizeof pl->ssh_key },
                 { "delete", pl->del, sizeof pl->del }, { "create", pl->create, sizeof pl->create }, { "tableTag", pl->table_tag, sizeof pl->table_tag },
+                { "mbrTag", pl->mbr_tag, sizeof pl->mbr_tag },
             };
             if (!strcmp(key, "passwordHash") || !strcmp(key, "sshKey")) pl->has_extra = 1;
             for (size_t i = 0; i < sizeof f / sizeof *f; i++)
@@ -498,9 +499,14 @@ static int parse_plan(const char *s, Plan *pl) {
         } else if (!strncmp(p, "true", 4) || !strncmp(p, "null", 4)) {
             if (!strcmp(key, "autologin")) { pl->has_extra = 1; pl->autologin = p[0] == 't'; }
             if (!strcmp(key, "homeFormat")) pl->home_format = p[0] == 't';
+            if (!strcmp(key, "rootFormat")) { pl->root_format = p[0] == 't'; pl->root_format_seen = 1; }
             if (!strcmp(key, "espFormat")) pl->esp_format = p[0] == 't';
             p += 4;
-        } else if (!strncmp(p, "false", 5)) { if (!strcmp(key, "autologin")) pl->has_extra = 1; p += 5; }
+        } else if (!strncmp(p, "false", 5)) {
+            if (!strcmp(key, "autologin")) pl->has_extra = 1;
+            if (!strcmp(key, "rootFormat")) { pl->root_format = 0; pl->root_format_seen = 1; }
+            p += 5;
+        }
         else return -1;
     }
     /* the unattended fields come only from lord-autoinstall; the interface can't send them */
