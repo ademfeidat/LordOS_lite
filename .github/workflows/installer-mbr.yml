@@ -8,7 +8,13 @@ on:
       - "server/tests/mbr_test.c"
       - "server/src/install/disk_snapshot.c"
       - "server/src/install/disk_snapshot.h"
+      - "server/src/install/mbr_manual.c"
+      - "server/src/install/mbr_manual.h"
+      - "server/tests/mbr_manual_test.c"
       - "server/tests/disk_snapshot_test.c"
+      - "server/src/install/mbr_manual.c"
+      - "server/src/install/mbr_manual.h"
+      - "server/tests/mbr_manual_test.c"
       - ".github/workflows/installer-mbr.yml"
   pull_request:
     paths:
@@ -41,3 +47,8 @@ jobs:
         run: cc -std=c11 -Wall -Wextra -Werror -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer -Iserver/src -o /tmp/disk-snapshot-test server/tests/disk_snapshot_test.c server/src/install/disk_snapshot.c
       - name: Run common snapshot tests
         run: /tmp/disk-snapshot-test
+
+      - name: Compile MBR manual-selection validator
+        run: cc -std=c11 -Wall -Wextra -Werror -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer -Iserver/src -o /tmp/mbr-manual-test server/tests/mbr_manual_test.c server/src/install/mbr_manual.c
+      - name: Run MBR manual-selection tests
+        run: /tmp/mbr-manual-test
