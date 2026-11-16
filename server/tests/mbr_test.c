@@ -48,6 +48,38 @@ static void ebr_tests(void) {
     memset(f.sector[1], 0, 512);
     T(mbr_read_logicals(&t, 100000, read_ebr, &f) == MBR_EBR_CHAIN);
     T(mbr_read_logicals(&t, 100000, NULL, &f) == MBR_BAD_ARGUMENT);
+
+    /* Reject malformed caller-supplied snapshots before any sector reads. */
+    MbrTable bad = t;
+    bad.has_extended = 1;
+    bad.extended.type = 0x83;
+    bad.extended.first_lba = 1000;
+    bad.extended.sectors = 50000;
+    T(mbr_read_logicals(&bad, 100000, read_ebr, &f) == MBR_OUT_OF_RANGE);
+    bad = t;
+    bad.has_extended = 1;
+    bad.extended.type = 0x0f;
+    bad.extended.first_lba = 99000;
+    bad.extended.sectors = 2000;
+    T(mbr_read_logicals(&bad, 100000, read_ebr, &f) == MBR_OUT_OF_RANGE);
+    bad = t;
+    bad.has_extended = 1;
+    bad.extended.type = 0x0f;
+    bad.extended.first_lba = 1000;
+    bad.extended.sectors = 50000;
+    bad.primary_count = MBR_PRIMARY_SLOTS + 1;
+    T(mbr_read_logicals(&bad, 100000, read_ebr, &f) == MBR_BAD_ARGUMENT);
+    bad = t;
+    bad.has_extended = 1;
+    bad.extended.type = 0x0f;
+    bad.extended.first_lba = 1000;
+    bad.extended.sectors = 50000;
+    bad.primary_count = 1;
+    bad.primary[0].type = 0x83;
+    bad.primary[0].first_lba = 2000;
+    bad.primary[0].sectors = 100;
+    T(mbr_read_logicals(&bad, 100000, read_ebr, &f) == MBR_OVERLAP);
+
     f.count = 1; f.lba[0] = 1000;
     memset(f.sector[0], 0, 512); f.sector[0][510] = 0x55; f.sector[0][511] = 0xaa;
     ebr_entry(f.sector[0], 0, 0x83, 1, 60000);
