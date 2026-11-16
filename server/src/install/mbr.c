@@ -1,5 +1,6 @@
 /* mbr.c — deliberately read-only DOS/MBR parser. */
 #include "mbr.h"
+
 #include <string.h>
 
 static uint32_t le32(const uint8_t *p) {
@@ -7,7 +8,9 @@ static uint32_t le32(const uint8_t *p) {
            (uint32_t)p[2] << 16 | (uint32_t)p[3] << 24;
 }
 
-static int extended_type(uint8_t t) { return t == 0x05 || t == 0x0f || t == 0x85; }
+static int extended_type(uint8_t type) {
+    return type == 0x05 || type == 0x0f || type == 0x85;
+}
 
 MbrStatus mbr_parse_sector(const uint8_t sector[MBR_SECTOR_SIZE],
                            uint64_t disk_sectors, MbrTable *out) {
@@ -24,10 +27,17 @@ MbrStatus mbr_parse_sector(const uint8_t sector[MBR_SECTOR_SIZE],
         nonempty++;
         if (boot != 0 && boot != 0x80) return MBR_BAD_ENTRY;
         if (!type || !first || !count) return MBR_BAD_ENTRY;
-        if ((uint64_t)first >= disk_sectors || (uint64_t)count > disk_sectors - first)
-            return MBR_OUT_OF_RANGE;
+        if ((uint64_t)first >= disk_sectors ||
+            (uint64_t)count > disk_sectors - first) return MBR_OUT_OF_RANGE;
         if (type == 0xee) protective++;
-        MbrPartition p = { type, (uint8_t)(boot == 0x80), (uint8_t)(i + 1), first, count };
+
+        MbrPartition p = {
+            .type = type,
+            .bootable = (uint8_t)(boot == 0x80),
+            .slot = (uint8_t)(i + 1),
+            .first_lba = first,
+            .sectors = count
+        };
         if (extended_type(type)) {
             if (out->has_extended) return MBR_MULTIPLE_EXTENDED;
             out->has_extended = 1;
@@ -36,21 +46,24 @@ MbrStatus mbr_parse_sector(const uint8_t sector[MBR_SECTOR_SIZE],
             out->primary[out->primary_count++] = p;
         }
     }
-    if (protective) return nonempty == 1 && protective == 1 ? MBR_PROTECTIVE_GPT : MBR_HYBRID;
+
+    if (protective)
+        return nonempty == 1 && protective == 1 ? MBR_PROTECTIVE_GPT : MBR_HYBRID;
 
     for (unsigned i = 0; i < out->primary_count; i++) {
         const MbrPartition *a = &out->primary[i];
         uint64_t a_end = (uint64_t)a->first_lba + a->sectors;
         if (out->has_extended) {
-            uint64_t x0 = out->extended.first_lba;
-            uint64_t x1 = x0 + out->extended.sectors;
-            if ((uint64_t)a->first_lba < x1 && x0 < a_end) return MBR_OVERLAP;
+            uint64_t x_start = out->extended.first_lba;
+            uint64_t x_end = x_start + out->extended.sectors;
+            if ((uint64_t)a->first_lba < x_end && x_start < a_end)
+                return MBR_OVERLAP;
         }
         for (unsigned j = i + 1; j < out->primary_count; j++) {
             const MbrPartition *b = &out->primary[j];
             uint64_t b_end = (uint64_t)b->first_lba + b->sectors;
-            if ((uint64_t)a->first_lba < b_end && (uint64_t)b->first_lba < a_end)
-                return MBR_OVERLAP;
+            if ((uint64_t)a->first_lba < b_end &&
+                (uint64_t)b->first_lba < a_end) return MBR_OVERLAP;
         }
     }
     return MBR_OK;
