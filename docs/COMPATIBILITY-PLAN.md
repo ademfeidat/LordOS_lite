@@ -129,7 +129,7 @@ A focused test suite is in `server/tests/mbr_test.c`, wired into the server's `m
 target, with an isolated GitHub Actions job in `.github/workflows/installer-mbr.yml`.
 A local strict compile with `-Wall -Wextra -Werror` and Address/UndefinedBehavior sanitizers
 passed an equivalent 15-case smoke harness (0 failures). The committed full test suite is
-also configured to run in GitHub Actions; its hosted result has not yet been observed.
+also ran successfully in GitHub Actions (workflow run 43958643752; compile and test steps both succeeded).
 
 **Important limits:** this milestone does not enumerate logical partitions inside an extended
 partition, does not build an install plan, does not write an MBR, and is not connected to the
