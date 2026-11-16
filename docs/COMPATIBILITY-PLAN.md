@@ -170,3 +170,23 @@ sanitizer test job both passed.
 This remains read-only parser hardening. The installer still uses its existing GPT-only
 snapshot and `sgdisk` write path; no MBR table is yet exposed to the installer and no
 disk-writing behavior has been enabled.
+
+
+## Common read-only disk snapshot milestone (2026-11-16)
+
+Added `disk_snapshot.h/.c`, a pure tagged adapter that converts validated GPT
+(`FspTable`) and DOS/MBR (`MbrTable`) parser results into one bounded
+`DiskSnapshot` representation. It preserves partition numbering, inclusive extents,
+DOS type codes, logical-partition identity, and the extended-container extent.
+The adapter rejects duplicate numbers, overlapping extents, invalid bounds, and
+unrepresentable input. DOS snapshots are currently restricted to 512-byte logical
+sectors; 4Kn DOS layouts are refused conservatively until their LBA semantics are
+verified against real hardware and tooling.
+
+Added `disk_snapshot_test.c` and wired it into `make test` and the focused GitHub
+Actions workflow. CI run is pending at the time of this update.
+
+**Scope boundary:** this is a read-only conversion layer only. `FpSnap`, `fp_probe`,
+`mpp_probe`, `mp_decide`, `mpp_apply`, UI data contracts, and bootloader installation
+remain GPT/UEFI-oriented. The new common representation is not yet used to authorize
+or perform any installer operation. MBR installation remains disabled.
