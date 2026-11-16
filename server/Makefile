@@ -1146,3 +1146,10 @@ build/mbr-test: tests/mbr_test.c src/install/mbr.c src/install/mbr.h
 	@mkdir -p build
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -std=c11 -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer -o $@ tests/mbr_test.c src/install/mbr.c
 	./$@ || { rm -f $@; exit 1; }
+
+# Read-only common snapshot adapters for already-validated GPT and DOS layouts.
+test: build/disk-snapshot-test
+build/disk-snapshot-test: tests/disk_snapshot_test.c src/install/disk_snapshot.c src/install/disk_snapshot.h src/install/mbr.h src/install/freespace.h
+	@mkdir -p build
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -std=c11 -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer -o $@ tests/disk_snapshot_test.c src/install/disk_snapshot.c
+	./$@ || { rm -f $@; exit 1; }
