@@ -68,3 +68,85 @@ MbrStatus mbr_parse_sector(const uint8_t sector[MBR_SECTOR_SIZE],
     }
     return MBR_OK;
 }
+
+
+static int entry_empty(const uint8_t *e) {
+    for (unsigned i = 0; i < 16; i++) if (e[i]) return 0;
+    return 1;
+}
+
+static int extent_inside(uint64_t start, uint64_t count,
+                         uint64_t lower, uint64_t upper) {
+    return count && start >= lower && start <= upper && count - 1 <= upper - start;
+}
+
+static int extent_overlaps(uint64_t a, uint64_t an, uint64_t b, uint64_t bn) {
+    return a < b + bn && b < a + an;
+}
+
+MbrStatus mbr_read_logicals(MbrTable *table, uint64_t disk_sectors,
+                            MbrReadSector read_sector, void *context) {
+    if (!table || disk_sectors < 2) return MBR_BAD_ARGUMENT;
+    table->logical_count = 0;
+    if (!table->has_extended) return MBR_OK;
+    if (!read_sector) return MBR_BAD_ARGUMENT;
+
+    const uint64_t base = table->extended.first_lba;
+    const uint64_t limit = base + table->extended.sectors - 1;
+    uint64_t ebr_lba = base;
+    uint64_t visited[MBR_LOGICAL_MAX];
+    unsigned visited_count = 0;
+    uint8_t sector[MBR_SECTOR_SIZE];
+
+    for (;;) {
+        if (visited_count >= MBR_LOGICAL_MAX) return MBR_EBR_CHAIN;
+        for (unsigned i = 0; i < visited_count; i++)
+            if (visited[i] == ebr_lba) return MBR_EBR_LOOP;
+        if (!extent_inside(ebr_lba, 1, base, limit)) return MBR_EBR_CHAIN;
+        visited[visited_count++] = ebr_lba;
+        if (read_sector(context, ebr_lba, sector)) return MBR_EBR_IO;
+        if (sector[510] != 0x55 || sector[511] != 0xaa) return MBR_EBR_CHAIN;
+
+        const uint8_t *data = sector + 446;
+        const uint8_t *link = data + 16;
+        if (!entry_empty(data)) {
+            uint8_t boot = data[0], type = data[4];
+            uint32_t relative = le32(data + 8), count = le32(data + 12);
+            if ((boot != 0 && boot != 0x80) || !type || !relative || !count ||
+                extended_type(type) || type == 0xee) return MBR_EBR_CHAIN;
+            uint64_t absolute = ebr_lba + relative;
+            if (absolute < ebr_lba ||
+                !extent_inside(absolute, count, base, limit) ||
+                absolute == ebr_lba) return MBR_EBR_CHAIN;
+            for (unsigned i = 0; i < table->primary_count; i++)
+                if (extent_overlaps(absolute, count, table->primary[i].first_lba,
+                                    table->primary[i].sectors)) return MBR_OVERLAP;
+            for (unsigned i = 0; i < table->logical_count; i++)
+                if (extent_overlaps(absolute, count, table->logical[i].first_lba,
+                                    table->logical[i].sectors)) return MBR_OVERLAP;
+            MbrPartition p = {
+                .type = type,
+                .bootable = (uint8_t)(boot == 0x80),
+                .slot = (uint8_t)(5 + table->logical_count),
+                .first_lba = (uint32_t)absolute,
+                .sectors = count
+            };
+            table->logical[table->logical_count++] = p;
+        }
+
+        if (entry_empty(link)) {
+            if (!entry_empty(link + 16) || !entry_empty(link + 32)) return MBR_EBR_CHAIN;
+            return MBR_OK;
+        }
+
+        uint8_t link_boot = link[0], link_type = link[4];
+        uint32_t link_relative = le32(link + 8), link_count = le32(link + 12);
+        if (link_boot || !extended_type(link_type) || !link_relative || !link_count)
+            return MBR_EBR_CHAIN;
+        uint64_t next = base + link_relative;
+        if (next < base || !extent_inside(next, link_count, base, limit))
+            return MBR_EBR_CHAIN;
+        if (!entry_empty(link + 16) || !entry_empty(link + 32)) return MBR_EBR_CHAIN;
+        ebr_lba = next;
+    }
+}
