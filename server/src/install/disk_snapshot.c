@@ -49,7 +49,7 @@ int ds_from_gpt(const FspTable *table, DiskSnapshot *out) {
 
 int ds_from_mbr(const MbrTable *table, uint64_t disk_sectors,
                 unsigned logical_sector_size, DiskSnapshot *out) {
-    if (!table || !out || (logical_sector_size != 512 && logical_sector_size != 4096) ||
+    if (!table || !out || logical_sector_size != 512 ||
         disk_sectors < 2 || disk_sectors > FSP_MAX_TOTAL ||
         table->primary_count > MBR_PRIMARY_SLOTS ||
         table->logical_count > MBR_LOGICAL_MAX) return -1;
