@@ -74,3 +74,45 @@ Partition-table conversion, formatting and bootloader installation can destroy d
 OS unbootable. A compatibility mode must fail closed when it cannot prove the exact disk state and
 the exact changes it is about to make. Backups and disposable test disks are required for destructive
 test cases.
+
+
+## Implementation audit (2026-11-16)
+
+The first source audit confirms that the installer has a GPT-only shared-install architecture,
+not merely a UI restriction:
+
+- `manual.c` rejects non-UEFI boots and every table except a clean protective-MBR GPT.
+- `freepart.c` snapshots and validates both GPT headers and both GPT entry arrays, then uses
+  `sgdisk` for partition-table writes. Its snapshot cannot represent a DOS/MBR table.
+- `manualpart.c` uses the same GPT snapshot/backup/proof path as free-space installation.
+- `install.c` has an x86-64 BIOS GRUB path for **erase installation** only. The shared-install
+  paths install an EFI loader and register it with `efibootmgr`.
+- The current manual-partition test suite is a pure decision test and is a suitable place to add
+  firmware/table policy tests before any disk-writing code is introduced.
+- The existing disk-table code deliberately classifies hybrid MBR separately; that refusal must
+  remain in place.
+
+### Consequence for the implementation
+
+Do not enable MBR by changing only `mp_disk_why()`: the downstream snapshot, backup, table writer,
+post-write proof, partition-number handling and bootloader path are all GPT/UEFI-specific.
+A safe MBR implementation needs its own read-only parser and snapshot format, a DOS-aware writer
+with an explicit primary/extended/logical model, and a matching byte-level post-write verifier.
+It must not call `sgdisk` on a DOS partition table.
+
+### Revised implementation order
+
+1. Add pure MBR parsing and geometry tests (including invalid signatures, empty entries,
+   overlaps, out-of-range sectors, primary entries and extended-container boundaries).
+2. Add a disk snapshot abstraction that can represent GPT and DOS without treating a DOS disk
+   as a damaged GPT disk.
+3. Add a DOS-aware plan validator and writer only after the parser and tests cover primary,
+   extended and logical partition numbering. Refuse plans that cannot be proven safe.
+4. Add BIOS shared-install bootloader handling only after verifying GRUB embedding space and
+   preserving existing boot code; otherwise keep BIOS shared-install unavailable.
+5. Add UEFI-on-MBR as a separately gated mode only when a readable FAT ESP and firmware support
+   are positively established.
+6. Run the existing manual/free-space tests plus new parser tests and disposable-VM install tests.
+
+No installer behavior is changed by this audit. MBR shared installation remains unavailable until
+all of the above gates pass.
