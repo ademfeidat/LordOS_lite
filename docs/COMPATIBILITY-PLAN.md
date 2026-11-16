@@ -213,3 +213,26 @@ until ESP discovery and firmware behavior can be proven.
 Tests were added in `server/tests/mbr_manual_test.c`, and the test is included
 in `make test` and the isolated GitHub Actions workflow. This new test has been
 committed but is awaiting its first CI result.
+
+
+## Manual partitioning: current installer boundary
+
+The existing wizard already has a manual partitioning screen for healthy GPT
+disks booted in UEFI mode. It lists partitions and lets the user assign
+existing partitions to `/`, `/home`, swap, and EFI, or create/delete partitions
+inside free space. That path is implemented by `apps/installer/manualmodel.js`,
+`server/src/install/manual.c`, and `manualpart.c`.
+
+This is not yet the requested Legacy BIOS + DOS/MBR manual path. The existing
+GPT manual model requires an EFI System Partition and routes table changes
+through `sgdisk`; it must not be reused for DOS/MBR. The new MBR manual
+validator is still a read-only policy component and is not exposed as an
+installable UI mode. A separate MBR partition discovery/tagging path, UI model,
+backend revalidation, formatting/mount flow, and a proven BIOS GRUB strategy
+remain required. Until those exist, the installer must not offer MBR manual
+installation as if it were ready.
+
+The MBR validator now independently rechecks snapshot geometry, unique
+partition numbers, non-overlapping extents, primary/logical numbering,
+extended-container containment, and strict boolean flags before checking the
+selected root, home, and swap partitions.
