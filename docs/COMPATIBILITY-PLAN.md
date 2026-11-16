@@ -270,3 +270,24 @@ The wizard does not yet consume these fields. The MBR-specific selection UI,
 backend plan revalidation, formatting/mounting, fstab generation, and a proven
 BIOS GRUB strategy are still outstanding. Therefore Legacy BIOS/MBR manual
 installation is not yet enabled; the existing GPT/UEFI manual path is unchanged.
+
+
+## Separate MBR manual-selection UI model (2026-11-17)
+
+Added `apps/installer/mbrmanualmodel.js`, intentionally separate from the existing
+GPT model. It consumes only the read-only `mbrProbeOk`, `mbrTag`, and `mbrParts`
+snapshot from `install-disks`; it maps filesystem types from the existing lsblk
+partition list, offers Linux data partitions (DOS type 0x83) for root/home and
+Linux swap (0x82) for swap, and preserves primary/logical partition numbers.
+It checks minimum sizes, duplicate role assignments, supported preserved /home
+filesystems, and refuses missing probe tags or non-512-byte sectors. Its plan
+shape is reserved as `manual-mbr` and includes the probe fingerprint.
+
+The isolated model test is `tests/installer_mbr_manual_model_test.mjs` and is
+now part of the MBR GitHub Actions workflow. This is a model/test milestone only:
+the wizard does not yet expose it, and the backend still rejects `manual-mbr`.
+No partition is formatted, mounted, or modified by this change. The next required
+work is backend plan parsing and a fresh read-only probe/tag comparison in
+`install-run`, followed by a separately tested mount/fstab path and BIOS GRUB
+backup/rollback strategy. The MBR manual install option must remain hidden until
+those protections are complete.
