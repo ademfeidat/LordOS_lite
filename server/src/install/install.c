@@ -46,6 +46,8 @@
 #include "install.h"
 #include "freepart.h"
 #include "manualpart.h"
+#include "mbr_disk.h"
+#include "disk_snapshot.h"
 #include "../users/homedirs.h"
 #include "../hw/tabletpower.h"
 #include "../localename.h"
@@ -261,6 +263,27 @@ void install_act_disks(const AdminReq *r, const char *arg, size_t len) {
         char dev[48], out[16384];
         int w = snprintf(dev, sizeof dev, "/dev/%s", k->name);
         if (w < 0 || (size_t)w >= sizeof dev) continue;
+        /* Read-only DOS/MBR discovery for the future BIOS manual-partitioning path.
+         * It is deliberately separate from the GPT manual installer below. */
+        static MbrTable mbr_table;
+        static DiskSnapshot mbr_snapshot;
+        char mbr_tag[40] = "";
+        int mbr_probe_ok = 0;
+        unsigned logical_sector_size = 0;
+        char logical_path[PATH_MAX], logical_text[32];
+        snprintf(logical_path, sizeof logical_path, "/sys/block/%s/queue/logical_block_size", k->name);
+        if (!read_line(logical_path, logical_text, sizeof logical_text))
+            logical_sector_size = (unsigned)strtoul(logical_text, NULL, 10);
+        int mbr_fd = open(dev, O_RDONLY | O_CLOEXEC | O_NOFOLLOW);
+        struct stat mbr_st;
+        if (mbr_fd >= 0 && !fstat(mbr_fd, &mbr_st) && S_ISBLK(mbr_st.st_mode) &&
+            logical_sector_size == MBR_SECTOR_SIZE && k->size % MBR_SECTOR_SIZE == 0 &&
+            mbr_probe_fd(mbr_fd, k->size / MBR_SECTOR_SIZE, logical_sector_size,
+                         &mbr_table, mbr_tag, sizeof mbr_tag) == MBR_OK &&
+            ds_from_mbr(&mbr_table, k->size / MBR_SECTOR_SIZE,
+                        logical_sector_size, &mbr_snapshot) == 0)
+            mbr_probe_ok = 1;
+        if (mbr_fd >= 0) close(mbr_fd);
         const char *const argv[] = { "/usr/bin/lsblk", "-n", "-P", "-b", "-o", "NAME,TYPE,FSTYPE,LABEL,SIZE", dev, NULL };
         if (admin_run_capture(argv, out, sizeof out) != 0) out[0] = 0;
         char *js = NULL;
@@ -279,6 +302,20 @@ void install_act_disks(const AdminReq *r, const char *arg, size_t len) {
         mpp_probe(k->name, &mp);
         if (mp.fp.esps == 1) { fsp_esp_count(&mp.fp.table, &espnum); fsp_part_path(k->name, espnum, espname, sizeof espname); }
         fprintf(f, ",\"ptable\":"); json_str(f, fsp_mbr_name(mp.fp.facts.mbr));
+        fprintf(f, ",\"mbrProbeOk\":%s,\"mbrTag\":", mbr_probe_ok ? "true" : "false");
+        json_str(f, mbr_probe_ok ? mbr_tag : "");
+        fprintf(f, ",\"mbrParts\":[");
+        if (mbr_probe_ok) for (unsigned q = 0; q < mbr_snapshot.partition_count; q++) {
+            const DsPartition *part = &mbr_snapshot.partitions[q];
+            char partdev[48];
+            fsp_part_path(k->name, part->number, partdev, sizeof partdev);
+            fprintf(f, "%s{\"name\":", q ? "," : ""); json_str(f, strrchr(partdev, '/') + 1);
+            fprintf(f, ",\"num\":%u,\"start\":%llu,\"end\":%llu,\"type\":%u,\"logical\":%s}",
+                    part->number, (unsigned long long)part->first_lba,
+                    (unsigned long long)part->last_lba, part->type_code,
+                    part->is_logical ? "true" : "false");
+        }
+        fprintf(f, "]");
         fprintf(f, ",\"esp\":%s,\"espPart\":", mp.fp.esps > 0 ? "true" : "false"); json_str(f, espname);
         fprintf(f, ",\"freeStart\":%llu,\"freeEnd\":%llu,\"freeBytes\":%llu,\"freeOk\":%s,\"freeWhy\":",
                 (unsigned long long)mp.fp.region.start, (unsigned long long)mp.fp.region.end, (unsigned long long)mp.fp.region.bytes, mp.fp.why ? "false" : "true");
