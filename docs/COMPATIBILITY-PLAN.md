@@ -152,3 +152,21 @@ that run reports success.
 
 The parser still is not connected to `mpp_probe`, `mp_decide`, `mpp_apply`, the installer UI,
 or GRUB installation. It only reads byte buffers supplied by a caller.
+
+
+### MBR snapshot-boundary hardening (2026-11-16)
+
+A follow-up review found that the EBR reader accepted a caller-provided `MbrTable`
+without independently checking that its extended-container geometry fit the supplied
+disk size. The reader now validates the primary-entry count and extents, the extended
+partition type and extent, and overlap between the extended container and primary data
+partitions before invoking the sector-reader callback.
+
+Regression tests cover a wrong extended type, an extended container beyond the disk,
+an impossible primary-entry count, and overlap with a primary partition. GitHub Actions
+run 43961078268 completed successfully: strict compilation and the Address/UndefinedBehavior
+sanitizer test job both passed.
+
+This remains read-only parser hardening. The installer still uses its existing GPT-only
+snapshot and `sgdisk` write path; no MBR table is yet exposed to the installer and no
+disk-writing behavior has been enabled.
