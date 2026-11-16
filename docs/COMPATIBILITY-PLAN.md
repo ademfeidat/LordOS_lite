@@ -236,3 +236,29 @@ The MBR validator now independently rechecks snapshot geometry, unique
 partition numbers, non-overlapping extents, primary/logical numbering,
 extended-container containment, and strict boolean flags before checking the
 selected root, home, and swap partitions.
+
+
+## Read-only MBR/EBR device probe (2026-11-16)
+
+Added `mbr_disk.c/.h`. The probe accepts only an already-open read-only file
+descriptor, refuses non-512-byte logical sectors, reads the MBR and follows
+the validated EBR chain using bounded `pread` calls, and emits a change-detection
+fingerprint over the MBR and every traversed EBR sector. The fingerprint is
+FNV-1a 64-bit plus the disk sector count; it is explicitly a change detector,
+not a cryptographic authentication mechanism.
+
+A temporary-image test now exercises a primary partition plus an extended
+partition with one logical partition, confirms the descriptor is read-only,
+checks that no bytes were written, converts the parsed table to `DiskSnapshot`,
+and proves the fingerprint changes when an EBR entry changes.
+
+GitHub Actions run 43964488361 passed all four isolated suites: MBR parser,
+common snapshot adapter, MBR manual-selection validator, and MBR disk-probe /
+snapshot-conversion tests. Each compiled with `-Wall -Wextra -Werror` and
+Address/UndefinedBehavior sanitizers. The new source files are also included in
+the server and installer test source lists.
+
+This is still a read-only discovery layer. It is not yet wired to
+`install-disks`, the wizard's MBR-specific selection UI, `install-run`, file
+system formatting/mounting, or GRUB installation. Therefore Legacy BIOS/MBR
+manual installation is not yet enabled.
