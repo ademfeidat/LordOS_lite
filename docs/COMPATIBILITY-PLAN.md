@@ -184,9 +184,32 @@ sectors; 4Kn DOS layouts are refused conservatively until their LBA semantics ar
 verified against real hardware and tooling.
 
 Added `disk_snapshot_test.c` and wired it into `make test` and the focused GitHub
-Actions workflow. The first expanded CI attempt passed the MBR parser tests but failed before compiling the adapter because the workflow shell continuation was over-escaped. The workflow command was corrected to a single line; the corrected adapter job has not yet produced a completed CI result.
+Actions workflow. The first expanded CI attempt passed the MBR parser tests but failed before compiling the adapter because the workflow shell continuation was over-escaped. The workflow command was corrected to a single line. The corrected run 43961842490 completed successfully, including strict compilation and sanitizer-backed tests for both the parser and snapshot adapter.
 
 **Scope boundary:** this is a read-only conversion layer only. `FpSnap`, `fp_probe`,
 `mpp_probe`, `mp_decide`, `mpp_apply`, UI data contracts, and bootloader installation
 remain GPT/UEFI-oriented. The new common representation is not yet used to authorize
 or perform any installer operation. MBR installation remains disabled.
+
+
+## BIOS/MBR manual partition-selection validator (2026-11-16)
+
+Added a separate, read-only validation layer in `mbr_manual.h/.c` for the next
+manual-install path. It accepts an existing DOS/MBR partition selected as `/`,
+with optional existing `/home` and Linux swap partitions. It distinguishes
+primary and logical partition numbers without renumbering them, requires BIOS
+boot mode, rejects a busy disk, checks Linux partition type codes and minimum
+sizes, prevents assigning one partition to multiple roles, and refuses an
+unknown `/home` filesystem when the user chooses to preserve it. Root formatting
+must be explicitly selected in the plan; swap partition and swapfile are mutually
+exclusive.
+
+The validator deliberately does not create/delete partitions, format filesystems,
+mount anything, install GRUB, or write an MBR/EBR. It is not yet connected to
+the installer UI or `install-run`. The current GPT manual-install route remains
+unchanged. The MBR route is BIOS-only at this stage; UEFI-on-MBR remains gated
+until ESP discovery and firmware behavior can be proven.
+
+Tests were added in `server/tests/mbr_manual_test.c`, and the test is included
+in `make test` and the isolated GitHub Actions workflow. This new test has been
+committed but is awaiting its first CI result.
