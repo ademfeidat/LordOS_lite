@@ -15,6 +15,7 @@ on:
       - "server/src/install/mbr_disk.h"
       - "server/tests/mbr_disk_test.c"
       - "server/Makefile"
+      - "server/src/install/install.c"
       - "server/tests/disk_snapshot_test.c"
       - "server/src/install/mbr_manual.c"
       - "server/src/install/mbr_manual.h"
@@ -23,6 +24,7 @@ on:
   pull_request:
     paths:
       - "server/Makefile"
+      - "server/src/install/install.c"
       - "server/src/install/mbr.c"
       - "server/src/install/mbr.h"
       - "server/tests/mbr_test.c"
@@ -68,3 +70,6 @@ jobs:
         run: cc -std=c11 -D_FILE_OFFSET_BITS=64 -Wall -Wextra -Werror -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer -Iserver/src -o /tmp/mbr-disk-test server/tests/mbr_disk_test.c server/src/install/mbr_disk.c server/src/install/mbr.c server/src/install/disk_snapshot.c
       - name: Run read-only MBR disk probe tests
         run: /tmp/mbr-disk-test
+
+      - name: Compile installer integration test target
+        run: make -C server build/install-plan-test
