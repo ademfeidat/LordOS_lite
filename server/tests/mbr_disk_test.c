@@ -1,5 +1,6 @@
 #define _GNU_SOURCE
 #include "install/mbr_disk.h"
+#include "install/disk_snapshot.h"
 #include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -45,6 +46,10 @@ int main(void) {
     T(st==MBR_OK);
     T(table.primary_count==1 && table.primary[0].slot==1);
     T(table.logical_count==1 && table.logical[0].slot==5);
+    DiskSnapshot snapshot;
+    T(ds_from_mbr(&table,sectors,512,&snapshot)==0);
+    T(snapshot.partition_count==2);
+    T(snapshot.partitions[0].number==1 && snapshot.partitions[1].number==5);
     T(strlen(tag)==16+1+5);
     T(pread(fd,check,512,0)==512 && !memcmp(check,mbr,512));
 
