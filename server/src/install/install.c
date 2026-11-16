@@ -264,6 +264,7 @@ void install_act_disks(const AdminReq *r, const char *arg, size_t len) {
         int w = snprintf(dev, sizeof dev, "/dev/%s", k->name);
         if (w < 0 || (size_t)w >= sizeof dev) continue;
         /* Read-only DOS/MBR discovery for the future BIOS manual-partitioning path.
+         * The UI may inspect this snapshot, but install-run still refuses MBR manual writes.
          * It is deliberately separate from the GPT manual installer below. */
         static MbrTable mbr_table;
         static DiskSnapshot mbr_snapshot;
