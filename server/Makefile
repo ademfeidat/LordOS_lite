@@ -1153,3 +1153,11 @@ build/disk-snapshot-test: tests/disk_snapshot_test.c src/install/disk_snapshot.c
 	@mkdir -p build
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -std=c11 -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer -o $@ tests/disk_snapshot_test.c src/install/disk_snapshot.c
 	./$@ || { rm -f $@; exit 1; }
+
+
+# Read-only BIOS/MBR manual partition selection rules; no disk access or writes.
+test: build/mbr-manual-test
+build/mbr-manual-test: tests/mbr_manual_test.c src/install/mbr_manual.c src/install/mbr_manual.h src/install/disk_snapshot.h src/install/freespace.h src/install/mbr.h
+	@mkdir -p build
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -std=c11 -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer -o $@ tests/mbr_manual_test.c src/install/mbr_manual.c
+	./$@ || { rm -f $@; exit 1; }
