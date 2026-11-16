@@ -1138,3 +1138,11 @@ build/wallpaper-image-test: tests/wallpaper_image_test.c src/hw/wallpaper_image.
 	$(CC) $(CPPFLAGS) -O1 -g -w -std=gnu11 -fsanitize=address,undefined -fno-sanitize=shift -fno-sanitize-recover=all -o $@ tests/wallpaper_image_test.c src/hw/wallpaper_image.c src/ui/stb.c -lm
 	ASAN_OPTIONS=detect_leaks=0 ./$@ || { rm -f $@; exit 1; }
 test: build/wallpaper-image-test
+
+
+# Read-only DOS/MBR parser tests. This target uses only the C library and never opens a disk.
+test: build/mbr-test
+build/mbr-test: tests/mbr_test.c src/install/mbr.c src/install/mbr.h
+	@mkdir -p build
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -std=c11 -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer -o $@ tests/mbr_test.c src/install/mbr.c
+	./$@ || { rm -f $@; exit 1; }
