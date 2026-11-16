@@ -29,7 +29,7 @@ static int read_sector(void *context, uint64_t lba, uint8_t out[MBR_SECTOR_SIZE]
 
 MbrStatus mbr_probe_fd(int fd, uint64_t disk_sectors, unsigned logical_sector_size,
                        MbrTable *out, char *fingerprint, size_t fingerprint_size) {
-    if (fd < 0 || !out || !fingerprint || fingerprint_size < 18 ||
+    if (fd < 0 || !out || !fingerprint || fingerprint_size < 40 ||
         logical_sector_size != MBR_SECTOR_SIZE || disk_sectors < 2)
         return MBR_BAD_ARGUMENT;
 
