@@ -39,6 +39,8 @@ int main(void) {
     d.extended_last_lba=d.total_sectors; T(mm_decide(&f, &p) != NULL); d.extended_last_lba=42469375;
     d.partitions[1].first_lba=42469376; T(mm_decide(&f, &p) != NULL); d.partitions[1].first_lba=20973568;
     d.partitions[1].is_logical=0; T(mm_decide(&f, &p) != NULL); d.partitions[1].is_logical=1;
+    d.partitions[1].is_logical=2; T(mm_decide(&f, &p) != NULL); d.partitions[1].is_logical=1;
+    d.has_extended=2; T(mm_decide(&f, &p) != NULL); d.has_extended=1;
     printf("%d checks, %d failures\n", checks, failures);
     return failures ? 1 : 0;
 }
