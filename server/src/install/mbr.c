@@ -28,7 +28,8 @@ MbrStatus mbr_parse_sector(const uint8_t sector[MBR_SECTOR_SIZE],
         if (boot != 0 && boot != 0x80) return MBR_BAD_ENTRY;
         if (!type || !first || !count) return MBR_BAD_ENTRY;
         if ((uint64_t)first >= disk_sectors ||
-            (uint64_t)count > disk_sectors - first) return MBR_OUT_OF_RANGE;
+            (uint64_t)count > disk_sectors - first ||
+            (uint64_t)count - 1 > UINT32_MAX - (uint64_t)first) return MBR_OUT_OF_RANGE;
         if (type == 0xee) protective++;
 
         MbrPartition p = {
@@ -102,7 +103,11 @@ MbrStatus mbr_read_logicals(MbrTable *table, uint64_t disk_sectors,
         if (visited_count >= MBR_LOGICAL_MAX) return MBR_EBR_CHAIN;
         for (unsigned i = 0; i < visited_count; i++)
             if (visited[i] == ebr_lba) return MBR_EBR_LOOP;
-        if (!extent_inside(ebr_lba, 1, base, limit)) return MBR_EBR_CHAIN;
+        if (!extent_inside(ebr_lba, 1, base, limit) || ebr_lba > UINT32_MAX)
+            return MBR_EBR_CHAIN;
+        for (unsigned i = 0; i < table->logical_count; i++)
+            if (extent_overlaps(ebr_lba, 1, table->logical[i].first_lba,
+                                table->logical[i].sectors)) return MBR_OVERLAP;
         visited[visited_count++] = ebr_lba;
         if (read_sector(context, ebr_lba, sector)) return MBR_EBR_IO;
         if (sector[510] != 0x55 || sector[511] != 0xaa) return MBR_EBR_CHAIN;
@@ -115,7 +120,8 @@ MbrStatus mbr_read_logicals(MbrTable *table, uint64_t disk_sectors,
             if ((boot != 0 && boot != 0x80) || !type || !relative || !count ||
                 extended_type(type) || type == 0xee) return MBR_EBR_CHAIN;
             uint64_t absolute = ebr_lba + relative;
-            if (absolute < ebr_lba ||
+            if (absolute < ebr_lba || absolute > UINT32_MAX ||
+                (uint64_t)count - 1 > UINT32_MAX - absolute ||
                 !extent_inside(absolute, count, base, limit) ||
                 absolute == ebr_lba) return MBR_EBR_CHAIN;
             for (unsigned i = 0; i < table->primary_count; i++)
@@ -144,7 +150,9 @@ MbrStatus mbr_read_logicals(MbrTable *table, uint64_t disk_sectors,
         if (link_boot || !extended_type(link_type) || !link_relative || !link_count)
             return MBR_EBR_CHAIN;
         uint64_t next = base + link_relative;
-        if (next < base || !extent_inside(next, link_count, base, limit))
+        if (next < base || next > UINT32_MAX ||
+            (uint64_t)link_count - 1 > UINT32_MAX - next ||
+            !extent_inside(next, link_count, base, limit))
             return MBR_EBR_CHAIN;
         if (!entry_empty(link + 16) || !entry_empty(link + 32)) return MBR_EBR_CHAIN;
         ebr_lba = next;
