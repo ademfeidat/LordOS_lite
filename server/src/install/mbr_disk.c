@@ -2,6 +2,7 @@
 #define _FILE_OFFSET_BITS 64
 #include "mbr_disk.h"
 
+#include <fcntl.h>
 #include <stdio.h>
 #include <unistd.h>
 
@@ -30,7 +31,8 @@ static int read_sector(void *context, uint64_t lba, uint8_t out[MBR_SECTOR_SIZE]
 MbrStatus mbr_probe_fd(int fd, uint64_t disk_sectors, unsigned logical_sector_size,
                        MbrTable *out, char *fingerprint, size_t fingerprint_size) {
     if (fd < 0 || !out || !fingerprint || fingerprint_size < 40 ||
-        logical_sector_size != MBR_SECTOR_SIZE || disk_sectors < 2)
+        logical_sector_size != MBR_SECTOR_SIZE || disk_sectors < 2 ||
+        (fcntl(fd, F_GETFL) & O_ACCMODE) != O_RDONLY)
         return MBR_BAD_ARGUMENT;
 
     ProbeReader reader = { .fd = fd, .hash = 14695981039346656037ull };
