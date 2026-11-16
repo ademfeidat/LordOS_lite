@@ -184,7 +184,7 @@ sectors; 4Kn DOS layouts are refused conservatively until their LBA semantics ar
 verified against real hardware and tooling.
 
 Added `disk_snapshot_test.c` and wired it into `make test` and the focused GitHub
-Actions workflow. CI run is pending at the time of this update.
+Actions workflow. The first expanded CI attempt passed the MBR parser tests but failed before compiling the adapter because the workflow shell continuation was over-escaped. The workflow command was corrected to a single line; the corrected adapter job has not yet produced a completed CI result.
 
 **Scope boundary:** this is a read-only conversion layer only. `FpSnap`, `fp_probe`,
 `mpp_probe`, `mp_decide`, `mpp_apply`, UI data contracts, and bootloader installation
