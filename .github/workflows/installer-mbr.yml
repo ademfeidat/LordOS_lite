@@ -14,6 +14,7 @@ on:
       - "server/src/install/mbr_disk.c"
       - "server/src/install/mbr_disk.h"
       - "server/tests/mbr_disk_test.c"
+      - "server/Makefile"
       - "server/tests/disk_snapshot_test.c"
       - "server/src/install/mbr_manual.c"
       - "server/src/install/mbr_manual.h"
@@ -21,12 +22,19 @@ on:
       - ".github/workflows/installer-mbr.yml"
   pull_request:
     paths:
+      - "server/Makefile"
       - "server/src/install/mbr.c"
       - "server/src/install/mbr.h"
       - "server/tests/mbr_test.c"
       - "server/src/install/disk_snapshot.c"
       - "server/src/install/disk_snapshot.h"
       - "server/tests/disk_snapshot_test.c"
+      - "server/src/install/mbr_manual.c"
+      - "server/src/install/mbr_manual.h"
+      - "server/tests/mbr_manual_test.c"
+      - "server/src/install/mbr_disk.c"
+      - "server/src/install/mbr_disk.h"
+      - "server/tests/mbr_disk_test.c"
       - ".github/workflows/installer-mbr.yml"
   workflow_dispatch:
 
