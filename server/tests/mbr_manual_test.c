@@ -1,0 +1,35 @@
+#include "install/mbr_manual.h"
+#include <stdio.h>
+#include <string.h>
+
+static int checks, failures;
+#define T(x) do { checks++; if (!(x)) { failures++; printf("FAIL %d: %s\n", __LINE__, #x); } } while (0)
+
+int main(void) {
+    DiskSnapshot d;
+    memset(&d, 0, sizeof d);
+    d.kind = DS_TABLE_MBR; d.logical_sector_size = 512; d.total_sectors = 100000000;
+    d.partition_count = 3;
+    d.partitions[0] = (DsPartition){ .number=1, .first_lba=2048, .last_lba=20973567, .type_code=0x83 };
+    d.partitions[1] = (DsPartition){ .number=5, .first_lba=20973568, .last_lba=41945087, .type_code=0x83, .is_logical=1 };
+    d.partitions[2] = (DsPartition){ .number=6, .first_lba=41945088, .last_lba=42469375, .type_code=0x82, .is_logical=1 };
+
+    MmFacts f; memset(&f, 0, sizeof f); f.bios_booted=1; f.disk=&d;
+    strcpy(f.fstype[5], "ext4");
+    MmPlan p = { .root_part=1, .home_part=5, .swap_part=6, .root_format=1 };
+    T(mm_decide(&f, &p) == NULL);
+    p.root_format=0; T(mm_decide(&f, &p) != NULL); p.root_format=1;
+    p.root_part=99; T(mm_decide(&f, &p) != NULL); p.root_part=1;
+    p.home_part=1; T(mm_decide(&f, &p) != NULL); p.home_part=5;
+    p.swap_file_mib=512; T(mm_decide(&f, &p) != NULL); p.swap_file_mib=0;
+    f.bios_booted=0; T(mm_decide(&f, &p) != NULL); f.bios_booted=1;
+    f.disk_busy=1; T(mm_decide(&f, &p) != NULL); f.disk_busy=0;
+    p.home_format=0; strcpy(f.fstype[5], "unknown"); T(mm_decide(&f, &p) != NULL);
+    strcpy(f.fstype[5], "ext4");
+    d.partitions[0].type_code=0x07; T(mm_decide(&f, &p) != NULL); d.partitions[0].type_code=0x83;
+    d.partitions[2].type_code=0x83; T(mm_decide(&f, &p) != NULL); d.partitions[2].type_code=0x82;
+    d.kind=DS_TABLE_GPT; T(mm_decide(&f, &p) != NULL); d.kind=DS_TABLE_MBR;
+    p.home_part=0; p.swap_part=0; p.root_part=1; T(mm_decide(&f, &p) == NULL);
+    printf("%d checks, %d failures\n", checks, failures);
+    return failures ? 1 : 0;
+}
