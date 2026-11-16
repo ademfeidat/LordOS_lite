@@ -116,3 +116,23 @@ It must not call `sgdisk` on a DOS partition table.
 
 No installer behavior is changed by this audit. MBR shared installation remains unavailable until
 all of the above gates pass.
+
+## MBR parser milestone (2026-11-16)
+
+A first read-only DOS/MBR parser now exists in `server/src/install/mbr.c` and
+`server/src/install/mbr.h`. It validates the 0x55AA signature, primary entry fields,
+boot flags, disk bounds, overlapping primary extents, and the single extended-container
+entry. It classifies a protective GPT MBR separately from a hybrid MBR. The parser performs
+no device I/O and cannot change a disk.
+
+A focused test suite is in `server/tests/mbr_test.c`, wired into the server's `make test`
+target, with an isolated GitHub Actions job in `.github/workflows/installer-mbr.yml`.
+A local strict compile with `-Wall -Wextra -Werror` and Address/UndefinedBehavior sanitizers
+passed an equivalent 15-case smoke harness (0 failures). The committed full test suite is
+also configured to run in GitHub Actions; its hosted result has not yet been observed.
+
+**Important limits:** this milestone does not enumerate logical partitions inside an extended
+partition, does not build an install plan, does not write an MBR, and is not connected to the
+installer UI or install path. It does not enable MBR installation. Those steps remain blocked
+until EBR-chain validation, DOS partition numbering, a safe reversible writer, and BIOS GRUB
+embedding checks are implemented and tested.
