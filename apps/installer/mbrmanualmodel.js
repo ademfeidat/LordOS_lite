@@ -8,7 +8,7 @@ export const MBR_LIMITS = {
 };
 
 const num = (v) => Number.isInteger(v) && v > 0;
-const bytes = (disk, p) => (p.end - p.start + 1) * disk.lsec;
+const bytes = (disk, p) => (p.end - p.start + 1) * disk.mbrLsec;
 
 export const emptyMbrManual = () => ({ rootPart: 0, homePart: 0, swapPart: 0, homeFormat: false });
 
