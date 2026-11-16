@@ -9,7 +9,8 @@ int main(void) {
     DiskSnapshot d;
     memset(&d, 0, sizeof d);
     d.kind = DS_TABLE_MBR; d.logical_sector_size = 512; d.total_sectors = 100000000;
-    d.partition_count = 3;
+    d.partition_count = 3; d.has_extended = 1;
+    d.extended_first_lba = 20973568; d.extended_last_lba = 42469375;
     d.partitions[0] = (DsPartition){ .number=1, .first_lba=2048, .last_lba=20973567, .type_code=0x83 };
     d.partitions[1] = (DsPartition){ .number=5, .first_lba=20973568, .last_lba=41945087, .type_code=0x83, .is_logical=1 };
     d.partitions[2] = (DsPartition){ .number=6, .first_lba=41945088, .last_lba=42469375, .type_code=0x82, .is_logical=1 };
@@ -30,6 +31,14 @@ int main(void) {
     d.partitions[2].type_code=0x83; T(mm_decide(&f, &p) != NULL); d.partitions[2].type_code=0x82;
     d.kind=DS_TABLE_GPT; T(mm_decide(&f, &p) != NULL); d.kind=DS_TABLE_MBR;
     p.home_part=0; p.swap_part=0; p.root_part=1; T(mm_decide(&f, &p) == NULL);
+    p.root_format=2; T(mm_decide(&f, &p) != NULL); p.root_format=1;
+    p.home_format=2; T(mm_decide(&f, &p) != NULL); p.home_format=0;
+    p.swap_file_mib=16385; T(mm_decide(&f, &p) != NULL); p.swap_file_mib=0;
+    d.partitions[1].number=1; T(mm_decide(&f, &p) != NULL); d.partitions[1].number=5;
+    d.partitions[1].first_lba=2048; T(mm_decide(&f, &p) != NULL); d.partitions[1].first_lba=20973568;
+    d.extended_last_lba=d.total_sectors; T(mm_decide(&f, &p) != NULL); d.extended_last_lba=42469375;
+    d.partitions[1].first_lba=42469376; T(mm_decide(&f, &p) != NULL); d.partitions[1].first_lba=20973568;
+    d.partitions[1].is_logical=0; T(mm_decide(&f, &p) != NULL); d.partitions[1].is_logical=1;
     printf("%d checks, %d failures\n", checks, failures);
     return failures ? 1 : 0;
 }
