@@ -136,3 +136,19 @@ partition, does not build an install plan, does not write an MBR, and is not con
 installer UI or install path. It does not enable MBR installation. Those steps remain blocked
 until EBR-chain validation, DOS partition numbering, a safe reversible writer, and BIOS GRUB
 embedding checks are implemented and tested.
+
+### EBR-chain parser milestone
+
+The read-only parser now also follows DOS extended-partition EBR chains through an injected
+sector-reader callback. It assigns logical partition numbers from 5, validates EBR signatures,
+relative offsets, 32-bit LBA limits, extended-container bounds, logical extents, overlap with
+other logical partitions, and repeated EBR locations. The callback boundary keeps parsing
+testable without opening or modifying a real disk.
+
+The focused test suite now covers a two-entry logical chain, a cyclic link, an invalid EBR
+signature, a missing reader, and a logical extent outside its extended container. The GitHub
+Actions run for this update is in progress; do not treat this milestone as passed by CI until
+that run reports success.
+
+The parser still is not connected to `mpp_probe`, `mp_decide`, `mpp_apply`, the installer UI,
+or GRUB installation. It only reads byte buffers supplied by a caller.
