@@ -88,6 +88,7 @@ int main(void) {
     entry(s,1,0x0f,2048,500,0);
     T(mbr_parse_sector(s,100000,&t)==MBR_OVERLAP);
 
+    ebr_tests();
     printf("%u checks, %u failures\n",checks,failures);
     return failures ? 1 : 0;
 }
