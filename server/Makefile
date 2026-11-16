@@ -1165,7 +1165,7 @@ build/mbr-manual-test: tests/mbr_manual_test.c src/install/mbr_manual.c src/inst
 
 # Read-only MBR/EBR device probe, exercised against a temporary image file.
 test: build/mbr-disk-test
-build/mbr-disk-test: tests/mbr_disk_test.c src/install/mbr_disk.c src/install/mbr_disk.h src/install/mbr.c src/install/mbr.h
+build/mbr-disk-test: tests/mbr_disk_test.c src/install/mbr_disk.c src/install/mbr_disk.h src/install/mbr.c src/install/mbr.h src/install/disk_snapshot.c src/install/disk_snapshot.h
 	@mkdir -p build
-	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -std=c11 -D_FILE_OFFSET_BITS=64 -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer -o $@ tests/mbr_disk_test.c src/install/mbr_disk.c src/install/mbr.c
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -std=c11 -D_FILE_OFFSET_BITS=64 -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer -o $@ tests/mbr_disk_test.c src/install/mbr_disk.c src/install/mbr.c src/install/disk_snapshot.c
 	./$@ || { rm -f $@; exit 1; }
