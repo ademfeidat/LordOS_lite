@@ -1,9 +1,11 @@
 /* mbr_disk.c — bounded, read-only MBR/EBR probe. */
 #define _FILE_OFFSET_BITS 64
+#define _XOPEN_SOURCE 700
 #include "mbr_disk.h"
 
 #include <fcntl.h>
 #include <stdio.h>
+#include <sys/types.h>
 #include <unistd.h>
 
 typedef struct {
