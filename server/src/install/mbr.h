@@ -47,4 +47,9 @@ typedef int (*MbrReadSector)(void *context, uint64_t lba, uint8_t out[MBR_SECTOR
 MbrStatus mbr_parse_sector(const uint8_t sector[MBR_SECTOR_SIZE],
                            uint64_t disk_sectors, MbrTable *out);
 
+/* Follows and validates an extended-partition EBR chain using a caller-supplied read-only
+ * sector reader. Logical partition numbers begin at 5. */
+MbrStatus mbr_read_logicals(MbrTable *table, uint64_t disk_sectors,
+                            MbrReadSector read_sector, void *context);
+
 #endif
