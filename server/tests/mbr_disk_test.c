@@ -51,6 +51,11 @@ int main(void) {
     T(snapshot.partition_count==2);
     T(snapshot.partitions[0].number==1 && snapshot.partitions[1].number==5);
     T(strlen(tag)==16+1+5);
+    T(mbr_fingerprint_matches(tag, tag));
+    T(!mbr_fingerprint_matches(tag, "0000000000000000-65536"));
+    T(!mbr_fingerprint_matches("", tag));
+    T(!mbr_fingerprint_matches("not-a-fingerprint", tag));
+    T(!mbr_fingerprint_matches(NULL, tag));
     T(pread(fd,check,512,0)==512 && !memcmp(check,mbr,512));
 
     char badtag[40];
