@@ -47,6 +47,7 @@
 #include "freepart.h"
 #include "manualpart.h"
 #include "mbr_disk.h"
+#include "mbr_busy.h"
 #include "disk_snapshot.h"
 #include "../users/homedirs.h"
 #include "../hw/tabletpower.h"
@@ -238,70 +239,6 @@ static void part_path(const char *disk, int num, char *out, size_t n) {
     snprintf(out, n, "/dev/%s%s%d", disk, l && isdigit((unsigned char)disk[l - 1]) ? "p" : "", num);
 }
 
-/* Conservative read-only use check for a whole MBR disk or one of its partitions.
- * Any unavailable kernel state is treated as busy. We inspect mountinfo, swaps and
- * sysfs holders; a holder catches active dm/LVM/MD layers backed by the partition. */
-static int mbr_block_busy(const char *name) {
-    char path[PATH_MAX], value[64];
-    unsigned ma, mi;
-    if (snprintf(path, sizeof path, "/sys/class/block/%s/dev", name) >= (int)sizeof path ||
-        read_line(path, value, sizeof value) ||
-        sscanf(value, "%u:%u", &ma, &mi) != 2) return 1;
-
-    FILE *mounts = fopen("/proc/self/mountinfo", "r");
-    if (!mounts) return 1;
-    char line[PATH_MAX * 2];
-    int busy = 0;
-    while (fgets(line, sizeof line, mounts)) {
-        unsigned a, b;
-        if (sscanf(line, "%*u %*u %u:%u", &a, &b) == 2 && a == ma && b == mi) {
-            busy = 1; break;
-        }
-    }
-    fclose(mounts);
-    if (busy) return 1;
-
-    FILE *swaps = fopen("/proc/swaps", "r");
-    if (!swaps) return 1;
-    if (fgets(line, sizeof line, swaps)) {
-        while (fgets(line, sizeof line, swaps)) {
-            char swap_path[PATH_MAX];
-            struct stat st;
-            if (sscanf(line, "%4095s", swap_path) == 1 &&
-                !stat(swap_path, &st) && S_ISBLK(st.st_mode) &&
-                major(st.st_rdev) == ma && minor(st.st_rdev) == mi) {
-                busy = 1; break;
-            }
-        }
-    } else busy = 1;
-    fclose(swaps);
-    if (busy) return 1;
-
-    if (snprintf(path, sizeof path, "/sys/class/block/%s/holders", name) >= (int)sizeof path)
-        return 1;
-    DIR *holders = opendir(path);
-    if (!holders) return 1;
-    struct dirent *entry;
-    while ((entry = readdir(holders)))
-        if (entry->d_name[0] != '.') { busy = 1; break; }
-    closedir(holders);
-    return busy;
-}
-
-static int mbr_part_busy(const char *disk, unsigned number) {
-    char path[48];
-    fsp_part_path(disk, number, path, sizeof path);
-    const char *leaf = strrchr(path, '/');
-    return mbr_block_busy(leaf ? leaf + 1 : path);
-}
-
-static int mbr_disk_busy(const char *disk, const DiskSnapshot *snapshot) {
-    if (!snapshot || mbr_block_busy(disk)) return 1;
-    for (unsigned i = 0; i < snapshot->partition_count; i++)
-        if (mbr_part_busy(disk, snapshot->partitions[i].number)) return 1;
-    return 0;
-}
-
 /* ---- install-disks ---- */
 
 /* Value of KEY="…" in an lsblk -P line. */
@@ -368,7 +305,7 @@ void install_act_disks(const AdminReq *r, const char *arg, size_t len) {
         mpp_probe(k->name, &mp);
         if (mp.fp.esps == 1) { fsp_esp_count(&mp.fp.table, &espnum); fsp_part_path(k->name, espnum, espname, sizeof espname); }
         fprintf(f, ",\"ptable\":"); json_str(f, fsp_mbr_name(mp.fp.facts.mbr));
-        fprintf(f, ",\"mbrProbeOk\":%s,\"mbrBusy\":%s,\"mbrLsec\":%u,\"mbrTag\":", mbr_probe_ok ? "true" : "false", mbr_disk_busy(k->name, mbr_probe_ok ? &mbr_snapshot : NULL) ? "true" : "false", mbr_probe_ok ? logical_sector_size : 0);
+        fprintf(f, ",\"mbrProbeOk\":%s,\"mbrBusy\":%s,\"mbrLsec\":%u,\"mbrTag\":", mbr_probe_ok ? "true" : "false", mbr_snapshot_busy_at("", k->name, mbr_probe_ok ? &mbr_snapshot : NULL) ? "true" : "false", mbr_probe_ok ? logical_sector_size : 0);
         json_str(f, mbr_probe_ok ? mbr_tag : "");
         fprintf(f, ",\"mbrParts\":[");
         if (mbr_probe_ok) for (unsigned q = 0; q < mbr_snapshot.partition_count; q++) {
@@ -380,7 +317,7 @@ void install_act_disks(const AdminReq *r, const char *arg, size_t len) {
                     part->number, (unsigned long long)part->first_lba,
                     (unsigned long long)part->last_lba, part->type_code,
                     part->is_logical ? "true" : "false",
-                    mbr_part_busy(k->name, part->number) ? "true" : "false");
+                    mbr_snapshot_busy_at("", k->name, &mbr_snapshot) ? "true" : "false");
         }
         fprintf(f, "]");
         fprintf(f, ",\"esp\":%s,\"espPart\":", mp.fp.esps > 0 ? "true" : "false"); json_str(f, espname);
