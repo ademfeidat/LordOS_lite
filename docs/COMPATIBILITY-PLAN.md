@@ -330,3 +330,16 @@ field for both its 512-byte support gate and partition-size calculations; it no
 longer reuses `lsec`, which belongs to the GPT/manual-partition probe and may be
 zero when GPT probing rejects a DOS disk. The MBR model remains hidden from the
 wizard and cannot authorize installation.
+
+
+## Read-only MBR preflight milestone (2026-11-17)
+
+Added `mbr_preflight.c/.h` as an isolated, read-only last-moment gate for a future BIOS/MBR manual path. Given an already-open read-only disk descriptor, geometry, the install-disks fingerprint and a parsed selection, it:
+
+- re-reads the MBR and complete EBR chain;
+- rejects invalid or unsupported layouts and stale fingerprints;
+- converts the fresh result to a `DiskSnapshot`;
+- runs the server-side `mm_decide` policy with explicit BIOS and busy facts and filesystem facts;
+- returns a stable installer error code without formatting, mounting, changing partition tables or installing GRUB.
+
+This helper is not yet called by `install-run`. The `manual-mbr` mode remains rejected by `validate()`, and no MBR write path is enabled. The fingerprint remains a non-cryptographic change detector. The next gate is to integrate this check into a separately branched, still-write-disabled install-run path, then design and test filesystem/mount rollback and BIOS GRUB embedding/backup behavior on disposable disk images and VMs.
