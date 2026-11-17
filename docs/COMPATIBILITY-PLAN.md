@@ -372,3 +372,18 @@ This milestone does not authorize installation writes and is not connected to
 `install-run`. BIOS GRUB installation, embedding-gap verification, backups,
 rollback, mount/busy detection, and end-to-end disposable-image tests remain
 blocking work.
+
+
+## Read-only MBR target-use discovery
+
+The installer disk-discovery JSON now reports `mbrBusy` and a `busy` flag on
+each MBR partition. The check combines the system-disk ancestry check (covering
+mounted system/live filesystems and active swap) with per-partition kernel
+state: mountinfo, sysfs holders, and /proc/swaps. An unknown per-partition
+state is treated as busy.
+
+These values are advisory discovery data only. They are not authorization to
+write: the privileged install-run path must repeat the checks immediately
+before any future operation, using the fresh disk identity and partition
+snapshot. This change does not enable the MBR UI or connect manual-mbr to an
+installer execution branch.
