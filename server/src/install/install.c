@@ -48,6 +48,7 @@
 #include "manualpart.h"
 #include "mbr_disk.h"
 #include "disk_snapshot.h"
+#include "../disk/disk.h"
 #include "../users/homedirs.h"
 #include "../hw/tabletpower.h"
 #include "../localename.h"
@@ -237,6 +238,25 @@ static void part_path(const char *disk, int num, char *out, size_t n) {
     snprintf(out, n, "/dev/%s%s%d", disk, l && isdigit((unsigned char)disk[l - 1]) ? "p" : "", num);
 }
 
+/* A manual MBR target is busy if it holds any system/live mount or active swap,
+ * or if any existing partition is mounted, held by dm/md/LVM, or active swap.
+ * disk_part_use reads kernel mountinfo, sysfs holders and /proc/swaps. Unknown is
+ * treated as busy. This is discovery metadata only; install-run must repeat it. */
+static int mbr_part_busy(const char *disk, unsigned number) {
+    char path[48];
+    fsp_part_path(disk, number, path, sizeof path);
+    const char *leaf = strrchr(path, '/');
+    return disk_part_use("", leaf ? leaf + 1 : path, 0) != DISK_USE_FREE;
+}
+
+static int mbr_disk_busy(const char *disk, const DiskSnapshot *snapshot) {
+    if (disk_is_system(disk)) return 1;
+    if (!snapshot) return 1;
+    for (unsigned i = 0; i < snapshot->partition_count; i++)
+        if (mbr_part_busy(disk, snapshot->partitions[i].number)) return 1;
+    return 0;
+}
+
 /* ---- install-disks ---- */
 
 /* Value of KEY="…" in an lsblk -P line. */
@@ -303,7 +323,7 @@ void install_act_disks(const AdminReq *r, const char *arg, size_t len) {
         mpp_probe(k->name, &mp);
         if (mp.fp.esps == 1) { fsp_esp_count(&mp.fp.table, &espnum); fsp_part_path(k->name, espnum, espname, sizeof espname); }
         fprintf(f, ",\"ptable\":"); json_str(f, fsp_mbr_name(mp.fp.facts.mbr));
-        fprintf(f, ",\"mbrProbeOk\":%s,\"mbrLsec\":%u,\"mbrTag\":", mbr_probe_ok ? "true" : "false", mbr_probe_ok ? logical_sector_size : 0);
+        fprintf(f, ",\"mbrProbeOk\":%s,\"mbrBusy\":%s,\"mbrLsec\":%u,\"mbrTag\":", mbr_probe_ok ? "true" : "false", mbr_disk_busy(k->name, mbr_probe_ok ? &mbr_snapshot : NULL) ? "true" : "false", mbr_probe_ok ? logical_sector_size : 0);
         json_str(f, mbr_probe_ok ? mbr_tag : "");
         fprintf(f, ",\"mbrParts\":[");
         if (mbr_probe_ok) for (unsigned q = 0; q < mbr_snapshot.partition_count; q++) {
@@ -311,10 +331,11 @@ void install_act_disks(const AdminReq *r, const char *arg, size_t len) {
             char partdev[48];
             fsp_part_path(k->name, part->number, partdev, sizeof partdev);
             fprintf(f, "%s{\"name\":", q ? "," : ""); json_str(f, strrchr(partdev, '/') + 1);
-            fprintf(f, ",\"num\":%u,\"start\":%llu,\"end\":%llu,\"type\":%u,\"logical\":%s}",
+            fprintf(f, ",\"num\":%u,\"start\":%llu,\"end\":%llu,\"type\":%u,\"logical\":%s,\"busy\":%s}",
                     part->number, (unsigned long long)part->first_lba,
                     (unsigned long long)part->last_lba, part->type_code,
-                    part->is_logical ? "true" : "false");
+                    part->is_logical ? "true" : "false",
+                    mbr_part_busy(k->name, part->number) ? "true" : "false");
         }
         fprintf(f, "]");
         fprintf(f, ",\"esp\":%s,\"espPart\":", mp.fp.esps > 0 ? "true" : "false"); json_str(f, espname);
