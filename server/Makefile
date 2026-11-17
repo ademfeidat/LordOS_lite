@@ -1183,3 +1183,10 @@ build/mbr-busy-test: tests/mbr_busy_test.c src/install/mbr_busy.c src/install/mb
 	@mkdir -p build
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -std=c11 -o $@ tests/mbr_busy_test.c src/install/mbr_busy.c
 	./$@ || { rm -f $@; exit 1; }
+
+# Read-only geometry check for a potential BIOS GRUB post-MBR embedding gap.
+test: build/mbr-grub-gap-test
+build/mbr-grub-gap-test: tests/mbr_grub_gap_test.c src/install/mbr_grub_gap.c src/install/mbr_grub_gap.h src/install/disk_snapshot.h
+	@mkdir -p build
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -std=c11 -o $@ tests/mbr_grub_gap_test.c src/install/mbr_grub_gap.c
+	./$@ || { rm -f $@; exit 1; }
