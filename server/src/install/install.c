@@ -48,7 +48,6 @@
 #include "manualpart.h"
 #include "mbr_disk.h"
 #include "disk_snapshot.h"
-#include "../disk/disk.h"
 #include "../users/homedirs.h"
 #include "../hw/tabletpower.h"
 #include "../localename.h"
@@ -70,6 +69,7 @@
 #include <sys/reboot.h>
 #include <signal.h>
 #include <sys/stat.h>
+#include <sys/sysmacros.h>
 #include <sys/syscall.h>
 #include <sys/wait.h>
 #include <unistd.h>
@@ -238,20 +238,65 @@ static void part_path(const char *disk, int num, char *out, size_t n) {
     snprintf(out, n, "/dev/%s%s%d", disk, l && isdigit((unsigned char)disk[l - 1]) ? "p" : "", num);
 }
 
-/* A manual MBR target is busy if it holds any system/live mount or active swap,
- * or if any existing partition is mounted, held by dm/md/LVM, or active swap.
- * disk_part_use reads kernel mountinfo, sysfs holders and /proc/swaps. Unknown is
- * treated as busy. This is discovery metadata only; install-run must repeat it. */
+/* Conservative read-only use check for a whole MBR disk or one of its partitions.
+ * Any unavailable kernel state is treated as busy. We inspect mountinfo, swaps and
+ * sysfs holders; a holder catches active dm/LVM/MD layers backed by the partition. */
+static int mbr_block_busy(const char *name) {
+    char path[PATH_MAX], value[64];
+    unsigned ma, mi;
+    if (snprintf(path, sizeof path, "/sys/class/block/%s/dev", name) >= (int)sizeof path ||
+        read_line(path, value, sizeof value) ||
+        sscanf(value, "%u:%u", &ma, &mi) != 2) return 1;
+
+    FILE *mounts = fopen("/proc/self/mountinfo", "r");
+    if (!mounts) return 1;
+    char line[PATH_MAX * 2];
+    int busy = 0;
+    while (fgets(line, sizeof line, mounts)) {
+        unsigned a, b;
+        if (sscanf(line, "%*u %*u %u:%u", &a, &b) == 2 && a == ma && b == mi) {
+            busy = 1; break;
+        }
+    }
+    fclose(mounts);
+    if (busy) return 1;
+
+    FILE *swaps = fopen("/proc/swaps", "r");
+    if (!swaps) return 1;
+    if (fgets(line, sizeof line, swaps)) {
+        while (fgets(line, sizeof line, swaps)) {
+            char swap_path[PATH_MAX];
+            struct stat st;
+            if (sscanf(line, "%4095s", swap_path) == 1 &&
+                !stat(swap_path, &st) && S_ISBLK(st.st_mode) &&
+                major(st.st_rdev) == ma && minor(st.st_rdev) == mi) {
+                busy = 1; break;
+            }
+        }
+    } else busy = 1;
+    fclose(swaps);
+    if (busy) return 1;
+
+    if (snprintf(path, sizeof path, "/sys/class/block/%s/holders", name) >= (int)sizeof path)
+        return 1;
+    DIR *holders = opendir(path);
+    if (!holders) return 1;
+    struct dirent *entry;
+    while ((entry = readdir(holders)))
+        if (entry->d_name[0] != '.') { busy = 1; break; }
+    closedir(holders);
+    return busy;
+}
+
 static int mbr_part_busy(const char *disk, unsigned number) {
     char path[48];
     fsp_part_path(disk, number, path, sizeof path);
     const char *leaf = strrchr(path, '/');
-    return disk_part_use("", leaf ? leaf + 1 : path, 0) != DISK_USE_FREE;
+    return mbr_block_busy(leaf ? leaf + 1 : path);
 }
 
 static int mbr_disk_busy(const char *disk, const DiskSnapshot *snapshot) {
-    if (disk_is_system(disk)) return 1;
-    if (!snapshot) return 1;
+    if (!snapshot || mbr_block_busy(disk)) return 1;
     for (unsigned i = 0; i < snapshot->partition_count; i++)
         if (mbr_part_busy(disk, snapshot->partitions[i].number)) return 1;
     return 0;
