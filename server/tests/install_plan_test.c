@@ -94,7 +94,7 @@ int main(void) {
     T(parse_plan("{\"mode\":\"manual-mbr\",\"rootFormat\":null}", &p) == 0 && !p.root_format_seen);
     T(parse_plan("{\"mode\":\"manual-mbr\",\"rootFormat\":false}", &p) == 0 && p.root_format_seen && !p.root_format);
     T(parse_plan("{\"mode\":\"manual-mbr\",\"rootFormat\":\"true\"}", &p) == 0 && !p.root_format_seen);
-    T(!strcmp(validate(&p), "install.badMode")); /* parser support must not enable disk writes */
+    T(!strcmp(validate(&p), "install.manual.mbr.notReady")); /* parser support must not enable disk writes */
 
     /* regions (#53): SUPPORTED lists some UTF-8 regions without the codeset ("en_IN UTF-8"); the
      * wizard always sends it, before any modifier (sdk/localename.js localeOf) */
