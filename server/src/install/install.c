@@ -598,6 +598,8 @@ static int manual_plan(const Plan *pl, MpPlan *m) {
 }
 
 static const char *validate(Plan *pl) {
+    /* Explicit fail-closed gate: manual-mbr has parser/preflight helpers, not a write path. */
+    if (!strcmp(pl->mode, "manual-mbr")) return "install.manual.mbr.notReady";
     if (fsp_mode(pl->mode) < 0) return "install.badMode";
     Disk disks[32];
     int n = list_disks(disks, 32), found = 0;
