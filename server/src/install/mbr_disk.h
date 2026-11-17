@@ -12,4 +12,8 @@
 MbrStatus mbr_probe_fd(int fd, uint64_t disk_sectors, unsigned logical_sector_size,
                        MbrTable *out, char *fingerprint, size_t fingerprint_size);
 
+/* Strict comparison for the install-disks snapshot token and a fresh probe result.
+ * This is stale-snapshot detection, not cryptographic authentication. */
+int mbr_fingerprint_matches(const char *expected, const char *observed);
+
 #endif
