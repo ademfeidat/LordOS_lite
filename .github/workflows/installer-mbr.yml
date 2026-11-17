@@ -27,6 +27,9 @@ on:
       - "server/Makefile"
       - "server/src/install/install.c"
       - ".github/workflows/installer-mbr.yml"
+      - "server/src/install/mbr_busy.c"
+      - "server/src/install/mbr_busy.h"
+      - "server/tests/mbr_busy_test.c"
   pull_request:
     paths:
       - "apps/installer/mbrmanualmodel.js"
@@ -53,6 +56,9 @@ on:
       - "server/tests/mbr_disk_test.c"
       - "server/tests/install_plan_test.c"
       - ".github/workflows/installer-mbr.yml"
+      - "server/src/install/mbr_busy.c"
+      - "server/src/install/mbr_busy.h"
+      - "server/tests/mbr_busy_test.c"
   workflow_dispatch:
 
 permissions:
@@ -96,6 +102,10 @@ jobs:
         run: cc -std=c11 -Wall -Wextra -Werror -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer -Iserver/src -o /tmp/mbr-mount-plan-test server/tests/mbr_mount_plan_test.c server/src/install/mbr_mount_plan.c server/src/install/mbr_manual.c
       - name: Run dry-run MBR mount plan tests
         run: /tmp/mbr-mount-plan-test
+      - name: Compile fail-closed MBR busy-state tests
+        run: cc -std=c11 -Wall -Wextra -Werror -Iserver/src -o /tmp/mbr-busy-test server/tests/mbr_busy_test.c server/src/install/mbr_busy.c
+      - name: Run fail-closed MBR busy-state tests
+        run: /tmp/mbr-busy-test
       - name: Compile installer plan integration tests
         run: make -C server SESSIOND=0 build/install-plan-test
       - name: Run installer plan integration tests
