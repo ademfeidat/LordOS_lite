@@ -23,6 +23,25 @@ static int read_text(const char *path, char *out, size_t n) {
     return out[0] ? 0 : -1;
 }
 
+static int mount_source_is(const char *line, const char *name) {
+    const char *dash = strstr(line, " - ");
+    if (!dash) return 0;
+    char source[PATH_MAX];
+    if (sscanf(dash + 3, "%*s %4095s", source) != 1 ||
+        strncmp(source, "/dev/", 5)) return 0;
+    char *out = source;
+    for (char *p = source; *p; p++) {
+        if (p[0] == '\\\\' && p[1] >= '0' && p[1] <= '3' &&
+            p[2] >= '0' && p[2] <= '7' && p[3] >= '0' && p[3] <= '7') {
+            *out++ = (char)((p[1]-'0')*64 + (p[2]-'0')*8 + (p[3]-'0'));
+            p += 3;
+        } else *out++ = *p;
+    }
+    *out = 0;
+    const char *leaf = strrchr(source, '/');
+    return leaf && !strcmp(leaf + 1, name);
+}
+
 static int block_busy(const char *root, const char *name) {
     char path[PATH_MAX], value[64];
     unsigned ma, mi;
@@ -40,7 +59,9 @@ static int block_busy(const char *root, const char *name) {
     while (fgets(line, sizeof line, mounts)) {
         unsigned a, b;
         if (sscanf(line, "%*u %*u %u:%u", &a, &b) == 2 &&
-            a == ma && b == mi) { busy = 1; break; }
+            ((a == ma && b == mi) || (a == 0 && mount_source_is(line, name)))) {
+            busy = 1; break;
+        }
     }
     fclose(mounts);
     if (busy) return 1;
