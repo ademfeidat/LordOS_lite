@@ -246,8 +246,8 @@ test: build/freespace-test build/install-plan-test
 build/freespace-test: tests/freespace_test.c src/install/freespace.c src/install/freespace.h
 	@mkdir -p build
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -std=c11 -o $@ tests/freespace_test.c src/install/freespace.c
-INSTALL_DISK_SRC := src/hw/tabletpower.c src/install/freepart.c src/install/freespace.c src/install/manual.c src/install/manualpart.c src/install/mbr.c src/install/mbr_disk.c src/install/disk_snapshot.c src/install/mbr_manual.c
-INSTALL_DISK_HDR := src/hw/tabletpower.h src/install/install.h src/install/freepart.h src/install/freespace.h src/install/manual.h src/install/manualpart.h src/install/mbr.h src/install/mbr_disk.h src/install/disk_snapshot.h src/install/mbr_manual.h
+INSTALL_DISK_SRC := src/hw/tabletpower.c src/install/freepart.c src/install/freespace.c src/install/manual.c src/install/manualpart.c src/install/mbr.c src/install/mbr_disk.c src/install/disk_snapshot.c src/install/mbr_manual.c src/install/mbr_busy.c
+INSTALL_DISK_HDR := src/hw/tabletpower.h src/install/install.h src/install/freepart.h src/install/freespace.h src/install/manual.h src/install/manualpart.h src/install/mbr.h src/install/mbr_disk.h src/install/disk_snapshot.h src/install/mbr_manual.h src/install/mbr_busy.h
 build/install-plan-test: tests/install_plan_test.c src/install/install.c $(INSTALL_DISK_SRC) src/users/homedirs.c $(INSTALL_DISK_HDR)
 	@mkdir -p build
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -std=c11 -o $@ tests/install_plan_test.c $(INSTALL_DISK_SRC) src/users/homedirs.c -lcrypt
