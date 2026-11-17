@@ -30,4 +30,9 @@ typedef struct {
 const char *mm_decide(const MmFacts *facts, const MmPlan *plan);
 int mm_home_fs_ok(const char *fstype);
 
+/* Convert parsed install-run fields without narrowing or treating omitted rootFormat as true. */
+int mm_plan_from_fields(long root_part, long home_part, long swap_part,
+                        int root_format, int root_format_seen, int home_format,
+                        long swap_file_mib, MmPlan *out);
+
 #endif
