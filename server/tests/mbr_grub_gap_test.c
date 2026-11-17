@@ -28,7 +28,7 @@ int main(void) {
     T(mbr_grub_gap_check(&d,1024*1024,&avail,&need)==MGG_OK);
     T(avail==2047); /* first primary still determines the gap */
     d.partitions[0].first_lba=8192;
-    T(mbr_grub_gap_check(&d,1024*1024,&avail,&need)==MGG_TOO_SMALL);
+    T(mbr_grub_gap_check(&d,3*1024*1024,&avail,&need)==MGG_TOO_SMALL);
     T(avail==4095); /* the extended container begins at LBA 4096 */
     d.logical_sector_size=4096;
     T(mbr_grub_gap_check(&d,512,&avail,&need)==MGG_BAD_SNAPSHOT);
