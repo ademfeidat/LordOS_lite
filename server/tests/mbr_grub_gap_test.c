@@ -25,7 +25,7 @@ int main(void) {
     d.has_extended=1; d.extended_first_lba=4096; d.extended_last_lba=90000;
     d.partition_count=2;
     d.partitions[1]=(DsPartition){.number=5,.first_lba=4097,.last_lba=50000,.type_code=0x83,.is_logical=1};
-    T(mbr_grub_gap_check(&d,1024*1024,&avail,&need)==MGG_OK);
+    T(mbr_grub_gap_check(&d,1024*1024-512,&avail,&need)==MGG_OK);
     T(avail==2047); /* first primary still determines the gap */
     d.partitions[0].first_lba=8192;
     T(mbr_grub_gap_check(&d,3*1024*1024,&avail,&need)==MGG_TOO_SMALL);
