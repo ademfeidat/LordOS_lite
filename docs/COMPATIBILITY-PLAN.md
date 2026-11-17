@@ -343,3 +343,6 @@ Added `mbr_preflight.c/.h` as an isolated, read-only last-moment gate for a futu
 - returns a stable installer error code without formatting, mounting, changing partition tables or installing GRUB.
 
 This helper is not yet called by `install-run`. The `manual-mbr` mode remains rejected by `validate()`, and no MBR write path is enabled. The fingerprint remains a non-cryptographic change detector. The next gate is to integrate this check into a separately branched, still-write-disabled install-run path, then design and test filesystem/mount rollback and BIOS GRUB embedding/backup behavior on disposable disk images and VMs.
+
+
+The `install-run` validator now returns the explicit `install.manual.mbr.notReady` refusal for `mode: "manual-mbr"` before generic mode dispatch. This makes the fail-closed state observable and prevents accidental fall-through to the erase branch. A plan parser or read-only preflight pass cannot authorize writes.
