@@ -41,6 +41,19 @@ int main(void) {
     d.partitions[1].is_logical=0; T(mm_decide(&f, &p) != NULL); d.partitions[1].is_logical=1;
     d.partitions[1].is_logical=2; T(mm_decide(&f, &p) != NULL); d.partitions[1].is_logical=1;
     d.has_extended=2; T(mm_decide(&f, &p) != NULL); d.has_extended=1;
+    MmPlan converted;
+    T(mm_plan_from_fields(1, 5, 6, 1, 1, 0, 0, &converted) == 0);
+    T(converted.root_part == 1 && converted.home_part == 5 && converted.swap_part == 6);
+    T(mm_plan_from_fields(1, 0, 0, 1, 0, 0, 0, &converted) != 0); /* omitted rootFormat */
+    T(mm_plan_from_fields(1, 0, 0, 0, 1, 0, 0, &converted) != 0); /* root must format */
+    T(mm_plan_from_fields(0, 0, 0, 1, 1, 0, 0, &converted) != 0);
+    T(mm_plan_from_fields(1, 1, 0, 1, 1, 0, 0, &converted) != 0);
+    T(mm_plan_from_fields(1, 0, 0, 1, 1, 2, 0, &converted) != 0);
+    T(mm_plan_from_fields(1, 0, 0, 1, 1, 0, -1, &converted) != 0);
+    T(mm_plan_from_fields(1, 0, 0, 1, 1, 0, 16385, &converted) != 0);
+    T(mm_plan_from_fields(1, 0, 0, 1, 1, 0, 512, &converted) == 0);
+    T(mm_plan_from_fields(1, 0, 6, 1, 1, 0, 512, &converted) != 0);
+    T(mm_plan_from_fields(1, 0, 0, 1, 1, 0, 0, NULL) != 0);
     printf("%d checks, %d failures\n", checks, failures);
     return failures ? 1 : 0;
 }
