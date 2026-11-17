@@ -17,9 +17,9 @@ int main(void) {
     MpPlan p;
     const char *uuid="01234567-89ab-cdef-0123-456789abcdef";
     T(mp_build(&d,&s,1,0,"ext4",uuid,&p)==0);
-    T(p.action_count==3 && p.actions[0].kind==MP_FORMAT_ROOT_EXT4);
+    T(p.action_count==4 && p.actions[0].kind==MP_FORMAT_ROOT_EXT4);
     T(p.actions[1].kind==MP_MOUNT_ROOT && p.actions[2].kind==MP_MOUNT_HOME);
-    T(p.fstab_count==2 && strstr(p.fstab[1],uuid)!=NULL);
+    T(p.fstab_count==3 && strstr(p.fstab[1],uuid)!=NULL);
     T(strstr(p.fstab[0],"@ROOT_UUID_AFTER_FORMAT@")!=NULL);
     T(mp_build(&d,&s,0,0,"ext4",uuid,&p)!=0);
     T(mp_build(&d,&s,1,1,"ext4",uuid,&p)!=0);
@@ -27,7 +27,7 @@ int main(void) {
     T(mp_build(&d,&s,1,0,"unknown",uuid,&p)!=0);
     s.home_format=1;
     T(mp_build(&d,&s,1,0,NULL,NULL,&p)==0);
-    T(p.action_count==4 && p.actions[2].kind==MP_FORMAT_HOME_EXT4);
+    T(p.action_count==5 && p.actions[2].kind==MP_FORMAT_HOME_EXT4);
     T(strstr(p.fstab[1],"@HOME_UUID_AFTER_FORMAT@")!=NULL);
     s.home_part=0; s.swap_part=3;
     T(mp_build(&d,&s,1,0,NULL,NULL,&p)==0);
