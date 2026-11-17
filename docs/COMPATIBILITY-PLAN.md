@@ -292,7 +292,7 @@ The read-only probe now also exposes `mbr_fingerprint_matches()`, a strict
 format-and-equality check for the `install-disks` token and a fresh probe result.
 Its tests cover equal tokens, changed geometry/content, empty and malformed
 values. This is only a stale-snapshot comparison primitive; it is not wired into
-`install-run`, and the FNV token is not cryptographic authentication. The MBR
+`install-run`, and the FNV token is not cryptographic authentication. A separate pure adapter, `mm_plan_from_fields()`, now converts the parsed root/home/swap values into the MBR policy structure with range checks, rejects omitted or false `rootFormat`, and prevents simultaneous swap-partition and swap-file selections. It is covered by the MBR validator tests but is not yet called by `install-run`. The MBR
 manual path remains rejected before any write operation.
 
 
