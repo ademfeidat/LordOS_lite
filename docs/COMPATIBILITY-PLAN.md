@@ -346,3 +346,29 @@ This helper is not yet called by `install-run`. The `manual-mbr` mode remains re
 
 
 The `install-run` validator now returns the explicit `install.manual.mbr.notReady` refusal for `mode: "manual-mbr"` before generic mode dispatch. This makes the fail-closed state observable and prevents accidental fall-through to the erase branch. A plan parser or read-only preflight pass cannot authorize writes.
+
+
+## Read-only MBR filesystem and mount-plan model
+
+The compatibility branch now contains `server/src/install/mbr_mount_plan.c` and
+`mbr_mount_plan.h`. `mp_build()` creates an inspectable ordered plan for an
+already-existing DOS/MBR layout: format root as ext4, mount root, optionally
+format or preserve /home, optionally initialize a swap partition or describe a
+swapfile, and produce fstab lines.
+
+This is strictly a pure planning layer. It does not open block devices, run
+mkfs/mkswap, create files, mount filesystems, or write fstab. It reuses the
+server-side MBR selection policy, including BIOS mode, busy-disk rejection,
+partition identity/type/size checks, and filesystem allowlisting.
+
+The root and newly initialized filesystem UUIDs are represented by explicit
+placeholders (`@ROOT_UUID_AFTER_FORMAT@`, `@HOME_UUID_AFTER_FORMAT@`,
+`@SWAP_UUID_AFTER_MKSWAP@`). A future executor must replace them only after
+the corresponding filesystem operation succeeds and UUID discovery is
+verified. Preserved /home requires a valid existing UUID. No device path such
+as /dev/sda is persisted into fstab.
+
+This milestone does not authorize installation writes and is not connected to
+`install-run`. BIOS GRUB installation, embedding-gap verification, backups,
+rollback, mount/busy detection, and end-to-end disposable-image tests remain
+blocking work.
