@@ -34,6 +34,11 @@ int main(void) {
     T(!strcmp(mbr_manual_preflight_fd(fd,sectors,4096,tag,1,0,&plan,fs,&fresh),"install.manual.mbr.badTable"));
     plan.root_part=0;
     T(mbr_manual_preflight_fd(fd,sectors,512,tag,1,0,&plan,fs,&fresh)!=NULL);
+    /* All preflight calls are read-only: sector zero must remain byte-identical. */
+    unsigned char after[512];
+    T(pread(fd,after,sizeof after,0)==(ssize_t)sizeof after);
+    T(!memcmp(after,mbr,sizeof mbr));
+    T((fcntl(fd,F_GETFL)&O_ACCMODE)==O_RDONLY);
     close(fd); unlink(path);
     printf("%d checks, %d failures\n",checks,failures);
     return failures ? 1 : 0;
