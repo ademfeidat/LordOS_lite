@@ -387,3 +387,19 @@ write: the privileged install-run path must repeat the checks immediately
 before any future operation, using the fresh disk identity and partition
 snapshot. This change does not enable the MBR UI or connect manual-mbr to an
 installer execution branch.
+
+
+### MBR busy-state probe details
+
+`mbr_busy.c` now provides a separately tested, fail-closed check. It requires
+readable sysfs device numbers, `/proc/self/mountinfo`, `/proc/swaps`, and
+each block device's sysfs `holders` directory. It detects direct mount major/minor
+matches, Btrfs mounts whose mountinfo device number is anonymous but whose
+source names the partition, active swap devices, and active holders such as
+device-mapper/LVM/MD. Missing or malformed state is treated as busy.
+
+The probe is read-only and supports a fake sysfs/proc root for tests. It is
+currently used only to annotate discovery JSON (`mbrBusy` and per-partition
+`busy`); the privileged execution path still refuses `manual-mbr`. A future
+installer preflight must call it again immediately before any action and
+revalidate the disk fingerprint.
