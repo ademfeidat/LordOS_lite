@@ -88,7 +88,7 @@ int main(void) {
     T(parse_plan("{\"mode\":\"manual\",\"disk\":\"zzz9\",\"rootPart\":4,\"espPart\":1}", &p) == 0 && !strcmp(validate(&p), "install.diskNotListed"));
 
     /* MBR manual plan fields are parsed for a future independent backend path, but mode remains gated. */
-    T(parse_plan("{\\"mode\\":\\"manual-mbr\\",\\"disk\\":\\"sda\\",\\"mbrTag\\":\\"0123456789abcdef-12345678\\",\\"rootPart\\":5,\\"homePart\\":6,\\"swapPart\\":7,\\"rootFormat\\":true,\\"homeFormat\\":false}", &p) == 0);
+    T(parse_plan("{\"mode\":\"manual-mbr\",\"disk\":\"sda\",\"mbrTag\":\"0123456789abcdef-12345678\",\"rootPart\":5,\"homePart\":6,\"swapPart\":7,\"rootFormat\":true,\"homeFormat\":false}", &p) == 0);
     T(!strcmp(p.mode, "manual-mbr") && !strcmp(p.mbr_tag, "0123456789abcdef-12345678"));
     T(p.root_part == 5 && p.home_part == 6 && p.swap_part == 7 && p.root_format_seen && p.root_format && !p.home_format);
     T(!strcmp(validate(&p), "install.badMode")); /* parser support must not enable disk writes */
