@@ -403,3 +403,18 @@ currently used only to annotate discovery JSON (`mbrBusy` and per-partition
 `busy`); the privileged execution path still refuses `manual-mbr`. A future
 installer preflight must call it again immediately before any action and
 revalidate the disk fingerprint.
+
+
+## BIOS GRUB post-MBR gap geometry (read-only)
+
+`mbr_grub_gap.c` computes the potential embedding area between the MBR sector
+(LBA 0) and the earliest primary partition or extended-partition container.
+It compares that sector count with the exact GRUB core-image byte size supplied
+by a future caller. It does not assume a 1 MiB alignment.
+
+This is only a partition-table geometry calculation. It cannot prove the gap
+contains no previous bootloader, metadata, or user data, and it does not model
+every sector GRUB may write. It performs no backup, no GRUB invocation, and no
+disk write. A successful result is not authorization to install GRUB. Exact
+core-image sizing, gap ownership verification, backups, rollback, and disposable
+disk-image tests remain mandatory blockers.
