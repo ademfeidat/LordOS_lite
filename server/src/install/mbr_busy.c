@@ -31,7 +31,7 @@ static int mount_source_is(const char *line, const char *name) {
         strncmp(source, "/dev/", 5)) return 0;
     char *out = source;
     for (char *p = source; *p; p++) {
-        if (p[0] == '\\\\' && p[1] >= '0' && p[1] <= '3' &&
+        if (p[0] == '\\' && p[1] >= '0' && p[1] <= '3' &&
             p[2] >= '0' && p[2] <= '7' && p[3] >= '0' && p[3] <= '7') {
             *out++ = (char)((p[1]-'0')*64 + (p[2]-'0')*8 + (p[3]-'0'));
             p += 3;
