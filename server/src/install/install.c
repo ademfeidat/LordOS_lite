@@ -496,16 +496,24 @@ static int parse_plan(const char *s, Plan *pl) {
                 *(key[4] == 'S' ? &pl->free_start : &pl->free_end) = u;
             }
             p = end;
-        } else if (!strncmp(p, "true", 4) || !strncmp(p, "null", 4)) {
-            if (!strcmp(key, "autologin")) { pl->has_extra = 1; pl->autologin = p[0] == 't'; }
-            if (!strcmp(key, "homeFormat")) pl->home_format = p[0] == 't';
-            if (!strcmp(key, "rootFormat")) { pl->root_format = p[0] == 't'; pl->root_format_seen = 1; }
-            if (!strcmp(key, "espFormat")) pl->esp_format = p[0] == 't';
+        } else if (!strncmp(p, "true", 4)) {
+            if (!strcmp(key, "autologin")) { pl->has_extra = 1; pl->autologin = 1; }
+            if (!strcmp(key, "homeFormat")) pl->home_format = 1;
+            if (!strcmp(key, "rootFormat")) { pl->root_format = 1; pl->root_format_seen = 1; }
+            if (!strcmp(key, "espFormat")) pl->esp_format = 1;
             p += 4;
         } else if (!strncmp(p, "false", 5)) {
-            if (!strcmp(key, "autologin")) pl->has_extra = 1;
+            if (!strcmp(key, "autologin")) { pl->has_extra = 1; pl->autologin = 0; }
+            if (!strcmp(key, "homeFormat")) pl->home_format = 0;
             if (!strcmp(key, "rootFormat")) { pl->root_format = 0; pl->root_format_seen = 1; }
+            if (!strcmp(key, "espFormat")) pl->esp_format = 0;
             p += 5;
+        } else if (!strncmp(p, "null", 4)) {
+            if (!strcmp(key, "autologin")) { pl->has_extra = 1; pl->autologin = 0; }
+            if (!strcmp(key, "homeFormat")) pl->home_format = 0;
+            if (!strcmp(key, "espFormat")) pl->esp_format = 0;
+            /* null is not an explicit rootFormat boolean */
+            p += 4;
         }
         else return -1;
     }
