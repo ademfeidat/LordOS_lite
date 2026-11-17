@@ -30,7 +30,8 @@ const char *mbr_manual_preflight_fd(int fd, uint64_t disk_sectors,
     facts.disk = fresh_snapshot;
     for (unsigned i = 0; i <= DS_MAX_PARTITIONS; i++) {
         const char *fs = fstype[i] ? fstype[i] : "";
-        size_t n = strnlen(fs, sizeof facts.fstype[i]);
+        size_t n = 0;
+        while (n < sizeof facts.fstype[i] && fs[n]) n++;
         if (n >= sizeof facts.fstype[i]) return "install.manual.mbr.badPlan";
         memcpy(facts.fstype[i], fs, n + 1);
     }
