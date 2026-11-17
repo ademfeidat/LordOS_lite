@@ -91,6 +91,9 @@ int main(void) {
     T(parse_plan("{\"mode\":\"manual-mbr\",\"disk\":\"sda\",\"mbrTag\":\"0123456789abcdef-12345678\",\"rootPart\":5,\"homePart\":6,\"swapPart\":7,\"rootFormat\":true,\"homeFormat\":false}", &p) == 0);
     T(!strcmp(p.mode, "manual-mbr") && !strcmp(p.mbr_tag, "0123456789abcdef-12345678"));
     T(p.root_part == 5 && p.home_part == 6 && p.swap_part == 7 && p.root_format_seen && p.root_format && !p.home_format);
+    T(parse_plan("{\\"mode\\":\\"manual-mbr\\",\\"rootFormat\\":null}", &p) == 0 && !p.root_format_seen);
+    T(parse_plan("{\\"mode\\":\\"manual-mbr\\",\\"rootFormat\\":false}", &p) == 0 && p.root_format_seen && !p.root_format);
+    T(parse_plan("{\\"mode\\":\\"manual-mbr\\",\\"rootFormat\\":\\"true\\"}", &p) == 0 && !p.root_format_seen);
     T(!strcmp(validate(&p), "install.badMode")); /* parser support must not enable disk writes */
 
     /* regions (#53): SUPPORTED lists some UTF-8 regions without the codeset ("en_IN UTF-8"); the
