@@ -11,10 +11,10 @@ int main(void) {
     d.partition_count=1;
     d.partitions[0]=(DsPartition){.number=1,.first_lba=2048,.last_lba=50000,.type_code=0x83};
     uint64_t avail=0,need=0;
-    T(mbr_grub_gap_check(&d,1024*1024,&avail,&need)==MGG_OK);
+    T(mbr_grub_gap_check(&d,1024*1024-512,&avail,&need)==MGG_OK);
+    T(avail==2047 && need==2047);
+    T(mbr_grub_gap_check(&d,1024*1024,&avail,&need)==MGG_TOO_SMALL);
     T(avail==2047 && need==2048);
-    T(mbr_grub_gap_check(&d,1024*1024+1,&avail,&need)==MGG_TOO_SMALL);
-    T(avail==2047 && need==2049);
     d.partitions[0].first_lba=63;
     T(mbr_grub_gap_check(&d,30000,&avail,&need)==MGG_OK);
     T(avail==62 && need==59);
