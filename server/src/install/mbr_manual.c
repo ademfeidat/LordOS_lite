@@ -96,3 +96,28 @@ const char *mm_decide(const MmFacts *f, const MmPlan *p) {
     }
     return NULL;
 }
+
+
+int mm_plan_from_fields(long root_part, long home_part, long swap_part,
+                        int root_format, int root_format_seen, int home_format,
+                        long swap_file_mib, MmPlan *out) {
+    if (!out || root_part <= 0 || root_part > DS_MAX_PARTITIONS ||
+        home_part < 0 || home_part > DS_MAX_PARTITIONS ||
+        swap_part < 0 || swap_part > DS_MAX_PARTITIONS ||
+        !root_format_seen || root_format != 1 ||
+        (home_format != 0 && home_format != 1) ||
+        swap_file_mib < 0 || swap_file_mib > 16384 ||
+        root_part == home_part || root_part == swap_part ||
+        (home_part && home_part == swap_part) ||
+        (swap_part && swap_file_mib))
+        return -1;
+    *out = (MmPlan) {
+        .root_part = (unsigned)root_part,
+        .home_part = (unsigned)home_part,
+        .swap_part = (unsigned)swap_part,
+        .root_format = root_format,
+        .home_format = home_format,
+        .swap_file_mib = (unsigned)swap_file_mib
+    };
+    return 0;
+}
