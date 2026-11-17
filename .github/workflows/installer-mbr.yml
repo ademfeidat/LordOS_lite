@@ -30,6 +30,9 @@ on:
       - "server/src/install/mbr_busy.c"
       - "server/src/install/mbr_busy.h"
       - "server/tests/mbr_busy_test.c"
+      - "server/src/install/mbr_grub_gap.c"
+      - "server/src/install/mbr_grub_gap.h"
+      - "server/tests/mbr_grub_gap_test.c"
   pull_request:
     paths:
       - "apps/installer/mbrmanualmodel.js"
@@ -59,6 +62,9 @@ on:
       - "server/src/install/mbr_busy.c"
       - "server/src/install/mbr_busy.h"
       - "server/tests/mbr_busy_test.c"
+      - "server/src/install/mbr_grub_gap.c"
+      - "server/src/install/mbr_grub_gap.h"
+      - "server/tests/mbr_grub_gap_test.c"
   workflow_dispatch:
 
 permissions:
@@ -106,6 +112,10 @@ jobs:
         run: cc -std=c11 -Wall -Wextra -Werror -Iserver/src -o /tmp/mbr-busy-test server/tests/mbr_busy_test.c server/src/install/mbr_busy.c
       - name: Run fail-closed MBR busy-state tests
         run: /tmp/mbr-busy-test
+      - name: Compile read-only GRUB gap geometry tests
+        run: cc -std=c11 -Wall -Wextra -Werror -Iserver/src -o /tmp/mbr-grub-gap-test server/tests/mbr_grub_gap_test.c server/src/install/mbr_grub_gap.c
+      - name: Run read-only GRUB gap geometry tests
+        run: /tmp/mbr-grub-gap-test
       - name: Compile installer plan integration tests
         run: make -C server SESSIOND=0 build/install-plan-test
       - name: Run installer plan integration tests
