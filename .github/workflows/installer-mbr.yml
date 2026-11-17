@@ -16,6 +16,9 @@ on:
       - "server/src/install/mbr_preflight.c"
       - "server/src/install/mbr_preflight.h"
       - "server/tests/mbr_preflight_test.c"
+      - "server/src/install/mbr_mount_plan.c"
+      - "server/src/install/mbr_mount_plan.h"
+      - "server/tests/mbr_mount_plan_test.c"
       - "server/tests/mbr_manual_test.c"
       - "server/src/install/mbr_disk.c"
       - "server/src/install/mbr_disk.h"
@@ -83,6 +86,10 @@ jobs:
         run: cc -std=c11 -D_FILE_OFFSET_BITS=64 -Wall -Wextra -Werror -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer -Iserver/src -o /tmp/mbr-preflight-test server/tests/mbr_preflight_test.c server/src/install/mbr_preflight.c server/src/install/mbr_manual.c server/src/install/mbr_disk.c server/src/install/mbr.c server/src/install/disk_snapshot.c
       - name: Run read-only MBR preflight tests
         run: /tmp/mbr-preflight-test
+      - name: Compile dry-run MBR mount plan tests
+        run: cc -std=c11 -Wall -Wextra -Werror -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer -Iserver/src -o /tmp/mbr-mount-plan-test server/tests/mbr_mount_plan_test.c server/src/install/mbr_mount_plan.c server/src/install/mbr_manual.c
+      - name: Run dry-run MBR mount plan tests
+        run: /tmp/mbr-mount-plan-test
       - name: Compile installer plan integration tests
         run: make -C server SESSIOND=0 build/install-plan-test
       - name: Run installer plan integration tests
