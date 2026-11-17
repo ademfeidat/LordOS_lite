@@ -76,6 +76,16 @@ static int block_busy(const char *root, const char *name) {
     return busy;
 }
 
+int mbr_partition_busy_at(const char *root, const char *disk, unsigned number) {
+    if (!disk || !*disk || !number) return 1;
+    char name[48];
+    int k = snprintf(name, sizeof name, "%s%s%u", disk,
+                     (disk[strlen(disk) - 1] >= '0' &&
+                      disk[strlen(disk) - 1] <= '9') ? "p" : "", number);
+    if (k < 0 || (size_t)k >= sizeof name) return 1;
+    return block_busy(root, name);
+}
+
 int mbr_snapshot_busy_at(const char *root, const char *disk,
                          const DiskSnapshot *snapshot) {
     if (!disk || !*disk || !snapshot || block_busy(root, disk)) return 1;
