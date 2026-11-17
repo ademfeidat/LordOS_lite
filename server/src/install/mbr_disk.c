@@ -48,3 +48,20 @@ MbrStatus mbr_probe_fd(int fd, uint64_t disk_sectors, unsigned logical_sector_si
              (unsigned long long)reader.hash, (unsigned long long)disk_sectors);
     return MBR_OK;
 }
+
+
+/* Compare only fingerprints in the exact format emitted above: 16 lowercase hex
+ * digits, a hyphen, and the decimal sector count. The token detects stale snapshots;
+ * it is deliberately not treated as a cryptographic identity. */
+int mbr_fingerprint_matches(const char *expected, const char *observed) {
+    if (!expected || !observed) return 0;
+    size_t n = strlen(expected);
+    if (n < 18 || n > 37 || strlen(observed) != n || expected[16] != '-') return 0;
+    for (size_t i = 0; i < 16; i++)
+        if (!((expected[i] >= '0' && expected[i] <= '9') ||
+              (expected[i] >= 'a' && expected[i] <= 'f'))) return 0;
+    if (expected[17] < '1' || expected[17] > '9') return 0;
+    for (size_t i = 18; i < n; i++)
+        if (expected[i] < '0' || expected[i] > '9') return 0;
+    return strcmp(expected, observed) == 0;
+}
