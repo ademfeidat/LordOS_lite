@@ -36,6 +36,8 @@ int main(void) {
     T(mbr_snapshot_busy_at(root,"sda",&d)==0);
     put("proc/self/mountinfo","30 1 8:1 / /mnt/data rw - ext4 /dev/sda1 rw\n");
     T(mbr_snapshot_busy_at(root,"sda",&d)==1);
+    put("proc/self/mountinfo","30 1 0:99 / /mnt/btrfs rw - btrfs /dev/sda1 rw\n");
+    T(mbr_snapshot_busy_at(root,"sda",&d)==1);
     put("proc/self/mountinfo","");
     put("proc/swaps","Filename Type Size Used Priority\n/dev/sda2 partition 100 0 -2\n");
     T(mbr_snapshot_busy_at(root,"sda",&d)==1);
