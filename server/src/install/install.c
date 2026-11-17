@@ -317,7 +317,7 @@ void install_act_disks(const AdminReq *r, const char *arg, size_t len) {
                     part->number, (unsigned long long)part->first_lba,
                     (unsigned long long)part->last_lba, part->type_code,
                     part->is_logical ? "true" : "false",
-                    mbr_snapshot_busy_at("", k->name, &mbr_snapshot) ? "true" : "false");
+                    mbr_partition_busy_at("", k->name, part->number) ? "true" : "false");
         }
         fprintf(f, "]");
         fprintf(f, ",\"esp\":%s,\"espPart\":", mp.fp.esps > 0 ? "true" : "false"); json_str(f, espname);
