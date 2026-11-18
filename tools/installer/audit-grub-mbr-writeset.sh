@@ -140,7 +140,7 @@ PY
   python3 - "$trace" "$loop" "$OUT/$name.device-write-audit.txt" <<'PY'
 import glob, re, sys
 prefix, target, output = sys.argv[1:]
-writes = re.compile(r"\\b(?:write|pwrite64|pwritev|pwritev2|writev)\\(\\d+<(/dev/[^<]+)")
+writes = re.compile(r"\b(?:write|pwrite64|pwritev|pwritev2|writev)\(\d+<(/dev/[^<]+)")
 seen = []
 bad = []
 for path in glob.glob(prefix + ".*"):
@@ -153,10 +153,10 @@ for path in glob.glob(prefix + ".*"):
         if device != target and not device.startswith(target + "p"):
             bad.append(device)
 with open(output, "w") as f:
-    f.write("block_device_write_syscalls=" + str(len(seen)) + "\\n")
+    f.write("block_device_write_syscalls=" + str(len(seen)) + "\n")
     for device in sorted(set(seen)):
-        f.write("written_device=" + device + "\\n")
-    f.write("non_target_block_device_writes=" + str(len(bad)) + "\\n")
+        f.write("written_device=" + device + "\n")
+    f.write("non_target_block_device_writes=" + str(len(bad)) + "\n")
 if bad:
     raise SystemExit("Refusing audit: writes reached non-target block devices: " + ", ".join(sorted(set(bad))))
 PY
