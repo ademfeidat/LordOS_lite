@@ -7,11 +7,11 @@ import os
 import re
 import sys
 
-FD_BLOCK = re.compile(r"(\d+)<(/dev/[^<]+)<block\b")
+FD_BLOCK = re.compile(r"(\d+)<([^<]+)<block\b")
 LSEEK = re.compile(
-    r"lseek\((\d+)<(/dev/[^<]+)<block [^>]+>>,\s*(-?\d+),\s*(SEEK_[A-Z]+)\)\s+=\s+(-?\d+)"
+    r"lseek\((\d+)<([^<]+)<block [^>]+>>,\s*(-?\d+),\s*(SEEK_[A-Z]+)\)\s+=\s+(-?\d+)"
 )
-IOCTL = re.compile(r"ioctl\((\d+)<(/dev/[^<]+)<block [^>]+>>,\s*([A-Z0-9_]+)")
+IOCTL = re.compile(r"ioctl\((\d+)<([^<]+)<block [^>]+>>,\s*([A-Z0-9_]+)")
 SAFE_BLOCK_IOCTLS = {
     "BLKFLSBUF", "BLKGETSIZE64", "BLKSSZGET", "BLKROGET",
     "BLKPBSZGET", "BLKIOMIN", "BLKIOOPT", "BLKALIGNOFF",
@@ -68,7 +68,7 @@ def parse_trace_files(trace_prefix, target, image_size):
                 seek = LSEEK.search(line)
                 if seek:
                     fd, device, _requested, _whence, result = seek.groups()
-                    if device == target:
+                    if device == target or device.endswith(target):
                         if int(result) < 0:
                             unclassified.append({"file": trace_path, "line": line_no, "reason": "failed lseek"})
                         else:
@@ -78,7 +78,7 @@ def parse_trace_files(trace_prefix, target, image_size):
                 ioctl = IOCTL.search(line)
                 if ioctl:
                     _fd, device, operation = ioctl.groups()
-                    if device == target:
+                    if device == target or device.endswith(target):
                         ioctls.append(operation)
                         if operation not in SAFE_BLOCK_IOCTLS:
                             unclassified.append({"file": trace_path, "line": line_no,
@@ -94,12 +94,12 @@ def parse_trace_files(trace_prefix, target, image_size):
                                          "reason": "writable mmap of target block device"})
                     continue
                 if not re.match(r"^(write|pwrite64|pwritev|pwritev2|writev)\(", line):
-                    if device == target and re.match(r"^(ftruncate|fallocate|splice|vmsplice|copy_file_range)\(", line):
+                    if (device == target or device.endswith(target)) and re.match(r"^(ftruncate|fallocate|splice|vmsplice|copy_file_range)\(", line):
                         unclassified.append({"file": trace_path, "line": line_no,
                                              "reason": "unreviewed target write-capable syscall"})
                     continue
 
-                if device != target:
+                if device != target and not device.endswith(target):
                     non_target_writes.append({"file": trace_path, "line": line_no, "device": device})
                     continue
 
