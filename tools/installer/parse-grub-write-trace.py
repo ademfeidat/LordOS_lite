@@ -7,7 +7,7 @@ import os
 import re
 import sys
 
-FD_BLOCK = re.compile(r"\((\d+)<(/dev/[^<]+)<block\b")
+FD_BLOCK = re.compile(r"(\d+)<(/dev/[^<]+)<block\b")
 LSEEK = re.compile(
     r"lseek\((\d+)<(/dev/[^<]+)<block [^>]+>>,\s*(-?\d+),\s*(SEEK_[A-Z]+)\)\s+=\s+(-?\d+)"
 )
