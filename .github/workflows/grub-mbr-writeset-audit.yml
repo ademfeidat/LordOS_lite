@@ -1,0 +1,32 @@
+name: Disposable BIOS GRUB write-set audit
+on:
+  push:
+    branches: [compatibility/legacy-bios-mbr]
+    paths:
+      - "tools/installer/audit-grub-mbr-writeset.sh"
+      - ".github/workflows/grub-mbr-writeset-audit.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  disposable-image-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install audit tools and GRUB BIOS binaries
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y grub-common grub2-common grub-pc-bin strace sfdisk util-linux python3
+      - name: Run audit only on CI-owned disposable loop images
+        run: sudo bash tools/installer/audit-grub-mbr-writeset.sh "$RUNNER_TEMP/grub-mbr-audit"
+      - name: Upload write-set evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: grub-mbr-write-set-evidence
+          path: ${{ runner.temp }}/grub-mbr-audit
+          if-no-files-found: warn
+          retention-days: 30
