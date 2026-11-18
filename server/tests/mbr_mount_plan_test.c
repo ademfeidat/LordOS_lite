@@ -38,6 +38,13 @@ int main(void) {
     T(p.actions[2].kind==MP_CREATE_SWAPFILE && p.actions[2].size_mib==1024);
     T(!strcmp(p.fstab[1],"/swapfile none swap sw 0 0"));
     s.swap_file_mib=16385; T(mp_build(&d,&s,1,0,NULL,NULL,&p)!=0);
+    s.swap_file_mib=0; s.home_part=DS_MAX_PARTITIONS+1;
+    T(mp_build(&d,&s,1,0,"ext4",uuid,&p)!=0);
+    s.home_part=0; s.root_part=DS_MAX_PARTITIONS+1;
+    T(mp_build(&d,&s,1,0,NULL,NULL,&p)!=0);
+    s.root_part=1; s.swap_part=DS_MAX_PARTITIONS+1;
+    T(mp_build(&d,&s,1,0,NULL,NULL,&p)!=0);
+    s.swap_part=0;
     s.swap_file_mib=0; s.root_format=0; T(mp_build(&d,&s,1,0,NULL,NULL,&p)!=0);
     s.root_format=1; s.home_part=1; T(mp_build(&d,&s,1,0,NULL,NULL,&p)!=0);
     s.home_part=0; d.kind=DS_TABLE_GPT; T(mp_build(&d,&s,1,0,NULL,NULL,&p)!=0);
