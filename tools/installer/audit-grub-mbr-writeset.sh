@@ -142,3 +142,7 @@ PY
 # reduces the gap and records whether this exact package build still embeds.
 run_case conventional-1mib 2048 262144
 run_case reduced-gap 256 262144
+
+# The audit runs as root to manage its private loop devices; make evidence
+# readable by the unprivileged upload-artifact action after cleanup.
+chmod -R a+rX "$OUT"
