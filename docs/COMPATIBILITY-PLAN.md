@@ -377,10 +377,13 @@ blocking work.
 ## Read-only MBR target-use discovery
 
 The installer disk-discovery JSON now reports `mbrBusy` and a `busy` flag on
-each MBR partition. The check combines the system-disk ancestry check (covering
-mounted system/live filesystems and active swap) with per-partition kernel
-state: mountinfo, sysfs holders, and /proc/swaps. An unknown per-partition
-state is treated as busy.
+each MBR partition. The check inspects each candidate block device and every partition in the
+current MBR snapshot using mountinfo device numbers, mount source names for
+Btrfs-style anonymous device numbers, sysfs holders, and /proc/swaps. Missing
+or unreadable kernel state is treated as busy. This is not yet a complete
+ancestry proof for every stacked or multi-device storage topology; the final
+privileged preflight must add explicit parent/holder graph traversal and live
+medium identity checks before any write path can be enabled.
 
 These values are advisory discovery data only. They are not authorization to
 write: the privileged install-run path must repeat the checks immediately
@@ -418,3 +421,12 @@ every sector GRUB may write. It performs no backup, no GRUB invocation, and no
 disk write. A successful result is not authorization to install GRUB. Exact
 core-image sizing, gap ownership verification, backups, rollback, and disposable
 disk-image tests remain mandatory blockers.
+
+
+### Busy-probe regression coverage
+
+The busy-state unit tests also exercise per-partition reporting, anonymous
+mountinfo source matching, active swap, active sysfs holders, and rejection of
+non-MBR snapshots. The fake-tree tests do not emulate every kernel storage
+topology; they are not a substitute for disposable VM tests with dm-crypt,
+LVM, MD RAID, Btrfs multi-device, USB live media, and mounted root filesystems.
