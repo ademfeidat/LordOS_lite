@@ -153,6 +153,7 @@ def covered(changed, written):
 
 def main():
     ap = argparse.ArgumentParser()
+    ap.add_argument("--allow-empty", action="store_true")
     ap.add_argument("trace_prefix")
     ap.add_argument("target_device")
     ap.add_argument("image_sectors", type=int)
