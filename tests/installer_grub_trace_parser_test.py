@@ -1,10 +1,15 @@
+import importlib.util
 import os
-import sys
 import tempfile
 import unittest
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "tools", "installer"))
-from parse_grub_write_trace import parse_trace_files, changed_ranges, covered
+parser_path = os.path.join(os.path.dirname(__file__), "..", "tools", "installer", "parse-grub-write-trace.py")
+spec = importlib.util.spec_from_file_location("parse_grub_write_trace", parser_path)
+parser = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(parser)
+parse_trace_files = parser.parse_trace_files
+changed_ranges = parser.changed_ranges
+covered = parser.covered
 
 
 class GrubTraceParserTests(unittest.TestCase):
