@@ -45,6 +45,15 @@ int main(void) {
     put("proc/swaps","Filename Type Size Used Priority\n/dev/sda2 partition 100 0 -2\n");
     T(mbr_snapshot_busy_at(root,"sda",&d)==1);
     put("proc/swaps","Filename Type Size Used Priority\n");
+    /* An overlong proc line must not be silently split and ignored. */
+    char oversized[10000]; memset(oversized, 'x', sizeof oversized - 1);
+    oversized[sizeof oversized - 1] = 0;
+    put("proc/self/mountinfo", oversized);
+    T(mbr_snapshot_busy_at(root,"sda",&d)==1);
+    put("proc/self/mountinfo","");
+    put("proc/swaps", oversized);
+    T(mbr_snapshot_busy_at(root,"sda",&d)==1);
+    put("proc/swaps","Filename Type Size Used Priority\n");
     dir("sys/class/block/sda1/holders/dm-0");
     T(mbr_snapshot_busy_at(root,"sda",&d)==1);
     T(mbr_partition_busy_at(root,"sda",1)==1);
