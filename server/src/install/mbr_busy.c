@@ -15,6 +15,15 @@ static int path_join(char *out, size_t n, const char *root, const char *rel) {
     return k < 0 || (size_t)k >= n ? -1 : 0;
 }
 
+/* Return 1 for a complete line, 0 at clean EOF, and -1 on I/O or truncation. */
+static int read_checked_line(FILE *f, char *line, size_t n) {
+    if (!fgets(line, (int)n, f)) return ferror(f) ? -1 : 0;
+    size_t len = strlen(line);
+    if (len && line[len - 1] == '\n') return 1;
+    if (feof(f)) return 1;
+    return -1;
+}
+
 static int read_text(const char *path, char *out, size_t n) {
     FILE *f = fopen(path, "r");
     if (!f) return -1;
@@ -56,33 +65,41 @@ static int block_busy(const char *root, const char *name) {
     FILE *mounts = fopen(path, "r");
     if (!mounts) return 1;
     char line[PATH_MAX * 2];
-    int busy = 0;
-    while (fgets(line, sizeof line, mounts)) {
+    int busy = 0, line_status;
+    while ((line_status = read_checked_line(mounts, line, sizeof line)) > 0) {
         unsigned a, b;
-        if (sscanf(line, "%*u %*u %u:%u", &a, &b) == 2 &&
-            ((a == ma && b == mi) || (a == 0 && mount_source_is(line, name)))) {
+        if (sscanf(line, "%*u %*u %u:%u", &a, &b) != 2) {
+            busy = 1; break;
+        }
+        if ((a == ma && b == mi) ||
+            (a == 0 && mount_source_is(line, name))) {
             busy = 1; break;
         }
     }
+    if (line_status < 0) busy = 1;
     fclose(mounts);
     if (busy) return 1;
 
     if (path_join(path, sizeof path, root, "/proc/swaps")) return 1;
     FILE *swaps = fopen(path, "r");
     if (!swaps) return 1;
-    if (!fgets(line, sizeof line, swaps)) busy = 1;
-    while (!busy && fgets(line, sizeof line, swaps)) {
+    line_status = read_checked_line(swaps, line, sizeof line);
+    if (line_status != 1) busy = 1; /* Missing or truncated header. */
+    while (!busy &&
+           (line_status = read_checked_line(swaps, line, sizeof line)) > 0) {
         char source[PATH_MAX];
-        if (sscanf(line, "%4095s", source) != 1) continue;
+        if (sscanf(line, "%4095s", source) != 1) { busy = 1; break; }
         const char *leaf = strrchr(source, '/');
         leaf = leaf ? leaf + 1 : source;
         if (!strcmp(leaf, name)) { busy = 1; break; }
         struct stat st;
-        if (!stat(source, &st) && S_ISBLK(st.st_mode) &&
+        if (stat(source, &st)) { busy = 1; break; }
+        if (S_ISBLK(st.st_mode) &&
             major(st.st_rdev) == ma && minor(st.st_rdev) == mi) {
             busy = 1; break;
         }
     }
+    if (line_status < 0) busy = 1;
     fclose(swaps);
     if (busy) return 1;
 
