@@ -454,3 +454,13 @@ persist and verify a byte-exact backup, install only on disposable disk images,
 verify the partition table and disk signature are unchanged, and test rollback
 after simulated interruption. Real disks remain out of scope until all those
 tests pass.
+
+
+## MBR UI busy-state gating
+
+The isolated MBR selection model now hides every partition when the disk-level
+`mbrBusy` flag is true and excludes individual partitions marked `busy`.
+Reviewing a selected busy disk or partition returns the explicit
+`install.manual.mbr.busy` error and never produces a backend-ready plan.
+This is only a UI-side guard; the server remains authoritative and the
+`manual-mbr` execution mode remains disabled.
