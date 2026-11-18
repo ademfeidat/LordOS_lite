@@ -1190,3 +1190,10 @@ build/mbr-grub-gap-test: tests/mbr_grub_gap_test.c src/install/mbr_grub_gap.c sr
 	@mkdir -p build
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -std=c11 -o $@ tests/mbr_grub_gap_test.c src/install/mbr_grub_gap.c
 	./$@ || { rm -f $@; exit 1; }
+
+# Planning-only BIOS GRUB guard: checks BIOS, busy/stale state, replacement acknowledgement and gap.
+test: build/mbr-grub-guard-test
+build/mbr-grub-guard-test: tests/mbr_grub_guard_test.c src/install/mbr_grub_guard.c src/install/mbr_grub_guard.h src/install/mbr_grub_gap.c src/install/mbr_grub_gap.h src/install/mbr_disk.c src/install/mbr_disk.h src/install/mbr.c src/install/mbr.h src/install/disk_snapshot.h
+	@mkdir -p build
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -std=c11 -D_FILE_OFFSET_BITS=64 -o $@ tests/mbr_grub_guard_test.c src/install/mbr_grub_guard.c src/install/mbr_grub_gap.c src/install/mbr_disk.c src/install/mbr.c src/install/disk_snapshot.c
+	./$@ || { rm -f $@; exit 1; }
