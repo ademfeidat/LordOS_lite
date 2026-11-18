@@ -42,7 +42,9 @@ static int add_fstab(MpPlan *p, const char *line) {
 int mp_build(const DiskSnapshot *d, const MmPlan *s,
              int bios_booted, int disk_busy,
              const char *home_fs, const char *home_uuid, MpPlan *out) {
-    if (!d || !s || !out) return -1;
+    if (!d || !s || !out || s->root_part > DS_MAX_PARTITIONS ||
+        s->home_part > DS_MAX_PARTITIONS || s->swap_part > DS_MAX_PARTITIONS)
+        return -1;
     MmFacts facts;
     memset(&facts, 0, sizeof facts);
     facts.bios_booted = bios_booted;
