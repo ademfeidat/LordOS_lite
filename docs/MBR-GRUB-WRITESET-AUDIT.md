@@ -126,6 +126,52 @@ block devices to GRUB's probing logic; the parser verified zero writes to
 non-target block devices, but this is not a reason to run the experiment on
 a user's machine. The workflow must remain confined to ephemeral CI runners.
 
+### Exact LordOS installer invocation — Debian 13
+
+Run 44364764781 completed successfully on commit
+08c4edec2789621eea074a05059d54e89c6f4f84. This run executes the same
+in-target command as server/src/install/install.c:
+`chroot TARGET /usr/sbin/grub-install --target=i386-pc DEVICE`.
+The temporary target root is ext4, and /dev, /proc, /sys, /run, /usr, and
+/etc are made available inside the chroot. The target DEVICE is always a
+loop device backed by a newly created regular file in the ephemeral CI runner.
+
+Environment and provenance:
+- Debian GNU/Linux 13 (Trixie), amd64.
+- grub-common, grub2-common, grub-pc-bin: 2.12-9+deb13u2.
+- grub-install SHA-256:
+  3ba6798ca720c6e1b574eb7227b59da586587111c253d3af566cab3f5233daa5
+- grub-bios-setup SHA-256:
+  083fc5c0f9d45b3ff807bb854696333121950ba030c48f61161b0e51fa42297c
+
+Artifact 14455798492 contains both full image pairs, the complete strace logs,
+GRUB module hashes, metadata, and machine-readable reconciliation results.
+Both layouts succeeded: first partition LBA 2048 and first partition LBA 256.
+
+For each layout, the trace parser found 115 successful 512-byte writes and
+reconciled them to one exact interval: byte offset 0, length 58,880
+(LBA 0 through LBA 114). Every changed image byte is covered by those writes.
+There were zero writes to non-target block devices, zero unclassified target
+writes, and no unreviewed target ioctls. The only target ioctls were
+BLKFLSBUF, BLKGETSIZE64, and BLKSSZGET.
+
+The byte comparison found changes in 115 sectors, LBA 0–114. Within sector 0,
+317 bytes in the boot-code area changed. The disk signature, reserved MBR
+bytes, four partition entries, and 0x55AA MBR signature were unchanged.
+The first partition's contents were unchanged. The sentinel-filled gap was
+overwritten, proving that this GRUB build consumes bytes in the post-MBR gap.
+
+**This exact 58,880-byte write interval is approved only as an observed
+write-set for the recorded GRUB version, hashes, Debian 13 amd64 environment,
+command, and tested 512-byte geometry.** It is not transferable to another
+package version, module set, command, or disk geometry without rerunning the
+audit. The build currently does not pin these packages, so a build-time
+version/hash gate is required before any write path can use this result.
+
+The audit still does not cover logical/EBR layouts, a deliberately
+insufficient gap, alternate module sets, 4Kn media, backup/restore fault
+injection, or BIOS boot verification in a VM.
+
 ## Backup and rollback acceptance
 
 Only after the write-set is stable may backup/restore code be designed. It must:
