@@ -3,6 +3,7 @@ on:
   push:
     branches: [compatibility/legacy-bios-mbr]
     paths:
+      - "tools/iso/check-grub-mbr-write-set.sh"
       - "tools/installer/audit-grub-mbr-writeset.sh"
       - "tools/installer/parse-grub-write-trace.py"
       - "tests/installer_grub_trace_parser_test.py"
@@ -29,6 +30,7 @@ jobs:
             debian:13 bash -euxc '
               apt-get update
               apt-get install -y grub-common grub2-common grub-pc-bin strace fdisk util-linux e2fsprogs python3
+              sh /workspace/tools/iso/check-grub-mbr-write-set.sh
               bash /workspace/tools/installer/audit-grub-mbr-writeset.sh /out
             '
       - name: Upload write-set evidence
