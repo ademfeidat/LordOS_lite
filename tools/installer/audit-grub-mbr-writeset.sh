@@ -135,10 +135,17 @@ PY
     echo "Successful GRUB run had no traced operations against $loop" >&2
     return 21
   fi
-  python3 /workspace/tools/installer/parse-grub-write-trace.py \
-    "$trace" "$loop" "$sectors" \
-    "$OUT/$name.before.img" "$OUT/$name.after.img" \
-    "$OUT/$name.write-audit.json"
+  if [[ "$name" == "reduced-gap" && "$rc" -ne 0 ]]; then
+    python3 /workspace/tools/installer/parse-grub-write-trace.py --allow-empty \
+      "$trace" "$loop" "$sectors" \
+      "$OUT/$name.before.img" "$OUT/$name.after.img" \
+      "$OUT/$name.write-audit.json"
+  else
+    python3 /workspace/tools/installer/parse-grub-write-trace.py \
+      "$trace" "$loop" "$sectors" \
+      "$OUT/$name.before.img" "$OUT/$name.after.img" \
+      "$OUT/$name.write-audit.json"
+  fi
 
   {
     echo "case=$name"
