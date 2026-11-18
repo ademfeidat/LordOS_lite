@@ -41,6 +41,8 @@ int main(void) {
     put("proc/self/mountinfo","30 1 0:99 / /mnt/btrfs rw - btrfs /dev/sda1 rw\n");
     T(mbr_snapshot_busy_at(root,"sda",&d)==1);
     T(mbr_partition_busy_at(root,"sda",1)==1);
+    put("proc/self/mountinfo","30 1 0:88 / /mnt/pool rw - btrfs /dev/other rw\\n");
+    T(mbr_snapshot_busy_at(root,"sda",&d)==1); /* Multi-device membership is not yet enumerable. */
     put("proc/self/mountinfo","");
     put("proc/swaps","Filename Type Size Used Priority\n/dev/sda2 partition 100 0 -2\n");
     T(mbr_snapshot_busy_at(root,"sda",&d)==1);
