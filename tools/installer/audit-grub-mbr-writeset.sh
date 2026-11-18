@@ -13,12 +13,14 @@ done
 OUT="${1:-artifacts/grub-mbr-audit}"
 mkdir -p "$OUT"
 OUT="$(realpath "$OUT")"
-WORK="$(mktemp -d)"
+WORK="$(mktemp -d "$OUT/.work.XXXXXX")"
 LOOP=""
 cleanup() {
   if [[ -n "$LOOP" ]]; then
     losetup -d "$LOOP" || true
   fi
+  # Make evidence readable even when an audit case exits early.
+  if [[ -d "$OUT" ]]; then chmod -R a+rX "$OUT" || true; fi
   rm -rf "$WORK"
 }
 trap cleanup EXIT
@@ -42,7 +44,6 @@ unit: sectors
 
 start=$first_lba, size=$((sectors - first_lba - 1)), type=83
 EOF
-  partprobe "$loop" || true
 
   # Put recognizable data in the post-MBR gap; this is a disposable image.
   python3 - "$image" "$first_lba" <<'PY'
