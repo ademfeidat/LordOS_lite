@@ -17,7 +17,7 @@ export function mbrPartitions(disk) {
       !Array.isArray(disk.mbrParts)) return [];
   const fsByNum = new Map((disk.parts || []).filter((p) => num(p.num)).map((p) => [p.num, p.fs || p.fstype || '']));
   return disk.mbrParts
-    .filter((p) => num(p.num) && Number.isSafeInteger(p.start) && Number.isSafeInteger(p.end) &&
+    .filter((p) => p.busy !== true && num(p.num) && Number.isSafeInteger(p.start) && Number.isSafeInteger(p.end) &&
       p.start >= 0 && p.end >= p.start && (p.type === 0x83 || p.type === 0x82))
     .map((p) => ({ ...p, fs: fsByNum.get(p.num) || '', bytes: bytes(disk, p) }))
     .sort((a, b) => a.start - b.start);
@@ -40,21 +40,26 @@ export function reviewMbrManual(disk, selection) {
   const errors = [];
   if (!disk || disk.mbrProbeOk !== true || !disk.mbrTag || disk.mbrLsec !== 512)
     errors.push('install.manual.mbr.unavailable');
+  if (disk?.mbrBusy === true) errors.push('install.manual.mbr.busy');
+  const rawByNum = new Map((disk?.mbrParts || []).filter((p) => num(p.num)).map((p) => [p.num, p]));
   if (!selection || !num(selection.rootPart)) errors.push('install.manual.mbr.noRoot');
   const root = byNum.get(selection?.rootPart);
-  if (selection?.rootPart && !root) errors.push('install.manual.mbr.noSuchPartition');
+  if (selection?.rootPart && rawByNum.get(selection.rootPart)?.busy === true) errors.push('install.manual.mbr.busy');
+  else if (selection?.rootPart && !root) errors.push('install.manual.mbr.noSuchPartition');
   else if (root && root.type !== 0x83) errors.push('install.manual.mbr.rootType');
   else if (root && root.bytes < MBR_LIMITS.root) errors.push('install.manual.mbr.rootTooSmall');
 
   const home = selection?.homePart ? byNum.get(selection.homePart) : null;
-  if (selection?.homePart && !home) errors.push('install.manual.mbr.noSuchPartition');
+  if (selection?.homePart && rawByNum.get(selection.homePart)?.busy === true) errors.push('install.manual.mbr.busy');
+  else if (selection?.homePart && !home) errors.push('install.manual.mbr.noSuchPartition');
   else if (home && home.type !== 0x83) errors.push('install.manual.mbr.homeType');
   else if (home && home.bytes < MBR_LIMITS.home) errors.push('install.manual.mbr.homeTooSmall');
   else if (home && !selection.homeFormat && !['ext4', 'ext3', 'ext2', 'xfs', 'btrfs'].includes(home.fs))
     errors.push('install.manual.mbr.homeUnknownFs');
 
   const swap = selection?.swapPart ? byNum.get(selection.swapPart) : null;
-  if (selection?.swapPart && !swap) errors.push('install.manual.mbr.noSuchPartition');
+  if (selection?.swapPart && rawByNum.get(selection.swapPart)?.busy === true) errors.push('install.manual.mbr.busy');
+  else if (selection?.swapPart && !swap) errors.push('install.manual.mbr.noSuchPartition');
   else if (swap && swap.type !== 0x82) errors.push('install.manual.mbr.swapType');
   else if (swap && (swap.bytes < MBR_LIMITS.swapMin || swap.bytes > MBR_LIMITS.swapMax))
     errors.push('install.manual.mbr.swapSize');
@@ -63,7 +68,7 @@ export function reviewMbrManual(disk, selection) {
   if (new Set(chosen).size !== chosen.length) errors.push('install.manual.mbr.duplicateRole');
   return {
     errors,
-    readyForBackend: errors.length === 0,
+    readyForBackend: errors.length === 0 && disk?.mbrBusy !== true,
     // The UI must not send this plan to install-run until its independent backend path exists.
     fields: errors.length ? null : {
       mode: 'manual-mbr',
