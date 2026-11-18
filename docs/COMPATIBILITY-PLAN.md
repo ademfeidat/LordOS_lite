@@ -430,3 +430,27 @@ mountinfo source matching, active swap, active sysfs holders, and rejection of
 non-MBR snapshots. The fake-tree tests do not emulate every kernel storage
 topology; they are not a substitute for disposable VM tests with dm-crypt,
 LVM, MD RAID, Btrfs multi-device, USB live media, and mounted root filesystems.
+
+
+## BIOS GRUB replacement and backup preflight model (planning only)
+
+The branch now has `mbr_grub_guard.c` and `mbr_grub_guard.h`. Its pure
+planner requires BIOS boot, a disk reported not busy, matching expected and
+fresh MBR fingerprints, explicit acknowledgement that an existing boot manager
+may be replaced, and enough geometrically available post-MBR sectors for the
+caller-supplied exact core-image size.
+
+On success it proposes backing up LBA 0 through the end of the candidate
+pre-partition gap, and identifies LBA 1 onward as the candidate embedding
+region. The plan explicitly reports `writes_authorized = 0`. It does not read
+or save those sectors, prove they are unused, invoke `grub-install`, or verify
+which sectors a particular GRUB build will actually modify. Therefore it is
+not yet safe to execute and is not connected to `install-run`.
+
+Before any bootloader write path can be enabled, a separate implementation
+must establish the exact GRUB write set for the shipped GRUB version, verify
+the full gap contents and ownership (including prior bootloader metadata),
+persist and verify a byte-exact backup, install only on disposable disk images,
+verify the partition table and disk signature are unchanged, and test rollback
+after simulated interruption. Real disks remain out of scope until all those
+tests pass.
