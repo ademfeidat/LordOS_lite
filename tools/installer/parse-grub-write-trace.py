@@ -89,6 +89,10 @@ def parse_trace_files(trace_prefix, target, image_size):
                 if not fd_info:
                     continue
                 fd, device = int(fd_info.group(1)), fd_info.group(2)
+                if line.startswith("mmap(") and device == target and "PROT_WRITE" in line:
+                    unclassified.append({"file": trace_path, "line": line_no,
+                                         "reason": "writable mmap of target block device"})
+                    continue
                 if not re.match(r"^(write|pwrite64|pwritev|pwritev2|writev)\(", line):
                     if device == target and re.match(r"^(ftruncate|fallocate|splice|vmsplice|copy_file_range)\(", line):
                         unclassified.append({"file": trace_path, "line": line_no,
@@ -187,7 +191,8 @@ def main():
         "changed_bytes_covered_by_traced_writes", "target_ioctls",
         "non_target_block_device_writes", "unclassified_target_writes"
     )}, indent=2))
-    if (not observed["write_operations"] or not ok or
+    empty_ok = args.allow_empty and not observed["write_operations"] and not changed
+    if ((not observed["write_operations"] and not empty_ok) or not ok or
         observed["non_target_block_device_writes"] or observed["unclassified_target_writes"]):
         raise SystemExit("GRUB write trace did not reconcile safely")
 
