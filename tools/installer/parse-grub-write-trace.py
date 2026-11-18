@@ -89,7 +89,7 @@ def parse_trace_files(trace_prefix, target, image_size):
                 if not fd_info:
                     continue
                 fd, device = int(fd_info.group(1)), fd_info.group(2)
-                if line.startswith("mmap(") and device == target and "PROT_WRITE" in line:
+                if line.startswith("mmap(") and (device == target or device.endswith(target)) and "PROT_WRITE" in line:
                     unclassified.append({"file": trace_path, "line": line_no,
                                          "reason": "writable mmap of target block device"})
                     continue
