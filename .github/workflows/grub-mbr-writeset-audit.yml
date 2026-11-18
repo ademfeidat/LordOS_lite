@@ -4,6 +4,8 @@ on:
     branches: [compatibility/legacy-bios-mbr]
     paths:
       - "tools/installer/audit-grub-mbr-writeset.sh"
+      - "tools/installer/parse-grub-write-trace.py"
+      - "tests/installer_grub_trace_parser_test.py"
       - ".github/workflows/grub-mbr-writeset-audit.yml"
   workflow_dispatch:
 
@@ -16,6 +18,8 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
+      - name: Test GRUB trace parser
+        run: python3 -m unittest discover -s tests -p 'installer_grub_trace_parser_test.py' -v
       - name: Run audit inside the LordOS Debian 13 build environment
         run: |
           mkdir -p "$RUNNER_TEMP/grub-mbr-audit"
