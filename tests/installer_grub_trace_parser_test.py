@@ -31,9 +31,9 @@ class GrubTraceParserTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             prefix = os.path.join(tmp, "trace")
             with open(prefix + ".7", "w") as f:
-                f.write('lseek(6</target/root/dev/loop0<block 7:0>>, 0, SEEK_SET) = 0\\n')
-                f.write('write(6</target/root/dev/loop0<block 7:0>>, "abc", 512) = 512\\n')
-                f.write('ioctl(6</target/root/dev/loop0<block 7:0>>, BLKFLSBUF) = 0\\n')
+                f.write('lseek(6</target/root/dev/loop0<block 7:0>>, 0, SEEK_SET) = 0\n')
+                f.write('write(6</target/root/dev/loop0<block 7:0>>, "abc", 512) = 512\n')
+                f.write('ioctl(6</target/root/dev/loop0<block 7:0>>, BLKFLSBUF) = 0\n')
             result = parse_trace_files(prefix, "/dev/loop0", 4096)
             self.assertEqual(result["write_ranges"], [(0, 512)])
             self.assertFalse(result["unclassified_target_writes"])
