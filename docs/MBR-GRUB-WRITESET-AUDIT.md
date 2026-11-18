@@ -80,6 +80,48 @@ yet include seek syscalls; the harness is being extended to reconcile every
 write call with its exact byte offset. No backup or rollback implementation
 has been accepted, and no real disk was used.
 
+### Debian 13 write-set observation with trace reconciliation
+
+Run 44363395787 completed successfully on commit
+6304db1bd864f8485d1ecf5a18d62a29c1de95f3. The audit ran inside Debian 13
+(Trixie), matching the LordOS ISO build host family, with:
+
+- grub-common, grub2-common, grub-pc-bin: 2.12-9+deb13u2
+- grub-install SHA-256:
+  3ba6798ca720c6e1b574eb7227b59da586587111c253d3af566cab3f5233daa5
+- grub-bios-setup SHA-256:
+  083fc5c0f9d45b3ff807bb854696333121950ba030c48f61161b0e51fa42297c
+
+Artifact 14455412419 contains complete before/after disposable images,
+module hashes, strace logs, and machine-readable write-audit JSON for both
+cases. The conventional case used first-partition LBA 2048; the reduced-gap
+case used LBA 256. Both grub-install runs succeeded.
+
+The trace parser reconciled every observed target-device write with the
+image-byte differences in both cases:
+
+- 115 successful 512-byte block write operations.
+- One merged write interval: byte offset 0, length 58,880 bytes (LBA 0–114).
+- All changed bytes were inside that traced interval.
+- No writes to any non-target block device.
+- No unclassified target write syscalls or unreviewed target ioctls.
+- Only BLKFLSBUF, BLKGETSIZE64, and BLKSSZGET were observed as target ioctls.
+- Exactly 115 sectors changed; the MBR boot-code region changed, while the
+  disk signature, reserved MBR bytes, partition entries, and MBR signature
+  remained unchanged. The first partition's contents remained unchanged.
+
+The sentinel-filled post-MBR gap was overwritten. Therefore, this GRUB build
+uses LBA 0–114 even when the first partition starts at LBA 256. A gap that
+looks large enough is not evidence that its contents are disposable.
+
+This is a version- and configuration-specific observation, not a universal
+GRUB contract. It does not yet cover logical/EBR layouts, a deliberately
+insufficient gap, alternate module sets, different GRUB command options,
+4Kn media, or backup/restore fault injection. The CI runner exposes other
+block devices to GRUB's probing logic; the parser verified zero writes to
+non-target block devices, but this is not a reason to run the experiment on
+a user's machine. The workflow must remain confined to ephemeral CI runners.
+
 ## Backup and rollback acceptance
 
 Only after the write-set is stable may backup/restore code be designed. It must:
