@@ -24,7 +24,7 @@ jobs:
             -v "$RUNNER_TEMP/grub-mbr-audit:/out" \
             debian:13 bash -euxc '
               apt-get update
-              apt-get install -y grub-common grub2-common grub-pc-bin strace fdisk util-linux python3
+              apt-get install -y grub-common grub2-common grub-pc-bin strace fdisk util-linux e2fsprogs python3
               bash /workspace/tools/installer/audit-grub-mbr-writeset.sh /out
             '
       - name: Upload write-set evidence
