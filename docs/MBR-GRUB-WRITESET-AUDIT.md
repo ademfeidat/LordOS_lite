@@ -56,6 +56,30 @@ A successful run is evidence only for the exact package versions and
 environment recorded in its artifact; it is not a release approval and does
 not authorize writes to real disks.
 
+### First disposable-image observation (not release approval)
+
+Run 44360623470 completed successfully on commit
+3bb41ef4a503b5047fa3ea8de775d38f29ebf093. It used Ubuntu 26.04.1 LTS and
+GRUB 2.14-2ubuntu2.1; grub-install and grub-bios-setup hashes and the full
+before/after images are retained in artifact
+14454485806 (grub-mbr-write-set-evidence).
+
+Both the 1 MiB-gap image (first partition LBA 2048) and the reduced-gap image
+(first partition LBA 256) completed grub-install successfully. Byte comparison
+found changes in sectors LBA 0 through LBA 118 (119 sectors total) in both
+cases. The MBR boot-code area changed, while the disk signature, reserved MBR
+bytes, partition entries, and MBR signature remained byte-identical. The first
+partition's contents remained unchanged. The sentinel-filled gap was
+overwritten by GRUB data.
+
+This is a warning, not permission: a successful GRUB install overwrote
+pre-existing gap bytes in both test layouts. The 119-sector observation is
+specific to this GRUB package build, module set, command, and geometry. The
+first trace captured 119 512-byte write calls plus device ioctls, but did not
+yet include seek syscalls; the harness is being extended to reconcile every
+write call with its exact byte offset. No backup or rollback implementation
+has been accepted, and no real disk was used.
+
 ## Backup and rollback acceptance
 
 Only after the write-set is stable may backup/restore code be designed. It must:
