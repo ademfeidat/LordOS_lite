@@ -38,6 +38,24 @@ Run the experiment against at least:
 
 The sentinel case must demonstrate whether GRUB overwrites pre-existing gap content. Such content must be treated as user data unless the installer has an explicit, separately justified policy to replace it.
 
+## Automated audit harness status
+
+A CI-only prototype now exists at
+tools/installer/audit-grub-mbr-writeset.sh, invoked by
+.github/workflows/grub-mbr-writeset-audit.yml. It creates regular-file images
+inside the ephemeral GitHub runner, attaches only those files as loop devices,
+checks each loop device's backing-file identity, fills the embedding gap with
+sentinel bytes, traces the GRUB process tree, and compares complete before/after
+images. It records package versions, executable hashes, traces, and changed
+byte ranges as workflow artifacts.
+
+The current prototype covers a conventional 1 MiB gap and one reduced-gap
+case. It does not yet cover logical/EBR layouts, a guaranteed too-small gap,
+full syscall-to-byte-range reconciliation, or every relevant GRUB module hash.
+A successful run is evidence only for the exact package versions and
+environment recorded in its artifact; it is not a release approval and does
+not authorize writes to real disks.
+
 ## Backup and rollback acceptance
 
 Only after the write-set is stable may backup/restore code be designed. It must:
