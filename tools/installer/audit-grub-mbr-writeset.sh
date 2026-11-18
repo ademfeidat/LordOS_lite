@@ -79,7 +79,7 @@ PY
   mkdir -p "$boot"
   set +e
   strace -ff -yy -s 256 -o "$trace" \
-    -e trace=write,pwrite64,pwritev,pwritev2,writev,lseek,_llseek,truncate,ftruncate,ioctl,mmap,msync,openat,open,close \
+    -e trace=read,pread64,readv,preadv,write,pwrite64,pwritev,pwritev2,writev,lseek,_llseek,truncate,ftruncate,ioctl,mmap,msync,openat,open,close,execve \
     grub-install --target=i386-pc --boot-directory="$boot" --recheck "$loop"
   rc=$?
   set -e
@@ -135,6 +135,31 @@ PY
     echo "Successful GRUB run had no traced operations against $loop" >&2
     return 21
   fi
+  # Fail if any write syscall targets a block device other than this exact
+  # disposable image loop device (including any partition node of that loop).
+  python3 - "$trace" "$loop" "$OUT/$name.device-write-audit.txt" <<'PY'
+import glob, re, sys
+prefix, target, output = sys.argv[1:]
+writes = re.compile(r"\\b(?:write|pwrite64|pwritev|pwritev2|writev)\\(\\d+<(/dev/[^<]+)")
+seen = []
+bad = []
+for path in glob.glob(prefix + ".*"):
+    for line in open(path, errors="replace"):
+        match = writes.search(line)
+        if not match:
+            continue
+        device = match.group(1)
+        seen.append(device)
+        if device != target and not device.startswith(target + "p"):
+            bad.append(device)
+with open(output, "w") as f:
+    f.write("block_device_write_syscalls=" + str(len(seen)) + "\\n")
+    for device in sorted(set(seen)):
+        f.write("written_device=" + device + "\\n")
+    f.write("non_target_block_device_writes=" + str(len(bad)) + "\\n")
+if bad:
+    raise SystemExit("Refusing audit: writes reached non-target block devices: " + ", ".join(sorted(set(bad))))
+PY
 
   {
     echo "case=$name"
@@ -148,9 +173,16 @@ PY
       echo "$pkg=$(dpkg-query -W -f='${Version}' "$pkg" 2>/dev/null || echo missing)"
     done
     grub-install --version
-    grub-bios-setup --version
+    BIOS_SETUP="$(find /usr -type f -name grub-bios-setup -perm /111 -print -quit 2>/dev/null || true)"
+    if [[ -n "$BIOS_SETUP" ]]; then
+      echo "grub_bios_setup_path=$BIOS_SETUP"
+      "$BIOS_SETUP" --version
+      sha256sum "$BIOS_SETUP"
+    else
+      echo "grub_bios_setup=not-shipped-as-separate-executable"
+    fi
     apt-cache policy grub-common grub2-common grub-pc-bin
-    sha256sum "$(command -v grub-install)" "$(command -v grub-bios-setup)" 2>/dev/null || true
+    sha256sum "$(command -v grub-install)"
   } > "$OUT/$name.metadata.txt"
   if [[ -d /usr/lib/grub/i386-pc ]]; then
     find /usr/lib/grub/i386-pc -type f -print0 | sort -z | xargs -0 sha256sum > "$OUT/$name.grub-modules.sha256"
