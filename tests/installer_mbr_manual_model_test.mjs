@@ -13,6 +13,8 @@ const disk = {
   parts: [{ num: 1, fs: 'ext4' }, { num: 5, fs: 'ext4' }, { num: 6, fs: 'swap' }],
 };
 assert.equal(mbrPartitions(disk).length, 3); // unsupported NTFS type is not offered
+assert.equal(mbrPartitions({ ...disk, mbrBusy: true }).length, 0);
+assert.equal(mbrPartitions({ ...disk, mbrParts: disk.mbrParts.map((p) => p.num === 5 ? { ...p, busy: true } : p) }).some((p) => p.num === 5), false);
 let s = emptyMbrManual();
 assert.deepEqual(reviewMbrManual(disk, s).errors, ['install.manual.mbr.noRoot']);
 s = setMbrRole(s, 'rootPart', 1);
@@ -33,6 +35,11 @@ assert.ok(reviewMbrManual(disk, { ...s, homeFormat: true }).fields.homeFormat);
 assert.ok(reviewMbrManual({ ...disk, mbrProbeOk: false }, s).errors.includes('install.manual.mbr.unavailable'));
 assert.ok(reviewMbrManual({ ...disk, mbrLsec: 4096 }, s).errors.includes('install.manual.mbr.unavailable'));
 assert.ok(reviewMbrManual({ ...disk, mbrTag: '' }, s).errors.includes('install.manual.mbr.unavailable'));
+assert.ok(reviewMbrManual({ ...disk, mbrBusy: true }, s).errors.includes('install.manual.mbr.busy'));
+assert.equal(reviewMbrManual({ ...disk, mbrBusy: true }, s).readyForBackend, false);
+const busyPart = { ...disk, mbrParts: disk.mbrParts.map((p) => p.num === 5 ? { ...p, busy: true } : p) };
+assert.ok(reviewMbrManual(busyPart, s).errors.includes('install.manual.mbr.busy'));
+assert.equal(reviewMbrManual(busyPart, s).readyForBackend, false);
 const tooSmall = { ...disk, mbrParts: disk.mbrParts.map((p) => p.num === 1 ? { ...p, end: p.start + MBR_LIMITS.root / 512 - 2 } : p) };
 assert.ok(reviewMbrManual(tooSmall, s).errors.includes('install.manual.mbr.rootTooSmall'));
 const unknownHome = { ...disk, parts: disk.parts.map((p) => p.num === 5 ? { ...p, fs: 'unknown' } : p) };
