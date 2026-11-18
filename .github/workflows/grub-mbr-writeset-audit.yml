@@ -19,7 +19,7 @@ jobs:
       - name: Install audit tools and GRUB BIOS binaries
         run: |
           sudo apt-get update
-          sudo apt-get install -y grub-common grub2-common grub-pc-bin strace sfdisk util-linux python3
+          sudo apt-get install -y grub-common grub2-common grub-pc-bin strace fdisk util-linux python3
       - name: Run audit only on CI-owned disposable loop images
         run: sudo bash tools/installer/audit-grub-mbr-writeset.sh "$RUNNER_TEMP/grub-mbr-audit"
       - name: Upload write-set evidence
