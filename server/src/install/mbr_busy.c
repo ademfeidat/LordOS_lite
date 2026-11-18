@@ -52,6 +52,17 @@ static int mount_source_is(const char *line, const char *name) {
     return leaf && !strcmp(leaf + 1, name);
 }
 
+/* Btrfs can mount several devices behind one anonymous mount device.
+ * Until sysfs member enumeration is verified, any active btrfs mount blocks
+ * destructive use of every candidate disk (conservative false positives).
+ */
+static int mount_is_btrfs(const char *line) {
+    const char *dash = strstr(line, " - ");
+    char fstype[32];
+    return dash && sscanf(dash + 3, "%31s", fstype) == 1 &&
+           !strcmp(fstype, "btrfs");
+}
+
 static int block_busy(const char *root, const char *name) {
     char path[PATH_MAX], value[64];
     unsigned ma, mi;
@@ -72,7 +83,8 @@ static int block_busy(const char *root, const char *name) {
             busy = 1; break;
         }
         if ((a == ma && b == mi) ||
-            (a == 0 && mount_source_is(line, name))) {
+            (a == 0 && mount_source_is(line, name)) ||
+            mount_is_btrfs(line)) {
             busy = 1; break;
         }
     }
