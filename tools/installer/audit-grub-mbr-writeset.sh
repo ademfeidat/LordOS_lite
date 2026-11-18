@@ -64,7 +64,7 @@ PY
   mkdir -p "$boot"
   set +e
   strace -ff -yy -s 256 -o "$trace" \
-    -e trace=write,pwrite64,pwritev,writev,truncate,ftruncate,ioctl,mmap,msync,openat,open,close \
+    -e trace=write,pwrite64,pwritev,pwritev2,writev,lseek,_llseek,truncate,ftruncate,ioctl,mmap,msync,openat,open,close \
     grub-install --target=i386-pc --boot-directory="$boot" --recheck "$loop"
   rc=$?
   set -e
@@ -128,8 +128,14 @@ PY
     for pkg in grub-common grub2-common grub-pc-bin; do
       echo "$pkg=$(dpkg-query -W -f='${Version}' "$pkg" 2>/dev/null || echo missing)"
     done
+    grub-install --version
+    grub-bios-setup --version
+    apt-cache policy grub-common grub2-common grub-pc-bin
     sha256sum "$(command -v grub-install)" "$(command -v grub-bios-setup)" 2>/dev/null || true
   } > "$OUT/$name.metadata.txt"
+  if [[ -d /usr/lib/grub/i386-pc ]]; then
+    find /usr/lib/grub/i386-pc -type f -print0 | sort -z | xargs -0 sha256sum > "$OUT/$name.grub-modules.sha256"
+  fi
 
   losetup -d "$loop"
   LOOP=""
