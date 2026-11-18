@@ -16,11 +16,14 @@ OUT="$(realpath "$OUT")"
 WORK="$(mktemp -d "$OUT/.work.XXXXXX")"
 LOOP=""
 BOOT_LOOP=""
-BOOT_MOUNT=""
+TARGET_MOUNT=""
+BIND_MOUNTS=()
 cleanup() {
-  if [[ -n "$BOOT_MOUNT" ]] && mountpoint -q "$BOOT_MOUNT"; then
-    umount "$BOOT_MOUNT" || true
-  fi
+  for ((i=${#BIND_MOUNTS[@]}-1; i>=0; i--)); do
+    if mountpoint -q "${BIND_MOUNTS[i]}"; then umount "${BIND_MOUNTS[i]}" || true; fi
+  done
+  BIND_MOUNTS=()
+  if [[ -n "$TARGET_MOUNT" ]] && mountpoint -q "$TARGET_MOUNT"; then umount "$TARGET_MOUNT" || true; fi
   if [[ -n "$BOOT_LOOP" ]]; then losetup -d "$BOOT_LOOP" || true; fi
   if [[ -n "$LOOP" ]]; then losetup -d "$LOOP" || true; fi
   # Make evidence readable even when an audit case exits early.
@@ -32,9 +35,8 @@ trap cleanup EXIT
 run_case() {
   local name="$1" first_lba="$2" sectors="$3"
   local image="$WORK/$name.img"
-  local boot_image="$WORK/$name-bootfs.img"
-  local boot_mount="$WORK/$name-boot-mount"
-  local boot="$boot_mount/boot"
+  local target_image="$WORK/$name-target-root.img"
+  local target_mount="$WORK/$name-target-root"
   local loop trace rc backing
   truncate -s $((sectors * 512)) "$image"
   loop="$(losetup --find --show --partscan "$image")"
@@ -68,24 +70,37 @@ PY
   sync
   cp --reflink=never "$image" "$OUT/$name.before.img"
   trace="$OUT/$name.strace"
-  # grub-install probes the filesystem holding its boot directory. Give it a
-  # disposable ext4 loop filesystem so it never needs the runner's root device.
-  truncate -s 64M "$boot_image"
-  mkfs.ext4 -F "$boot_image" > /dev/null
-  BOOT_LOOP="$(losetup --find --show "$boot_image")"
-  mkdir -p "$boot_mount"
-  mount "$BOOT_LOOP" "$boot_mount"
-  BOOT_MOUNT="$boot_mount"
-  mkdir -p "$boot"
+  # Reproduce the installer's in-target invocation: /boot lives on a disposable
+  # ext4 root image, while /usr, /etc and kernel interfaces are bind-mounted.
+  truncate -s 96M "$target_image"
+  mkfs.ext4 -F "$target_image" > /dev/null
+  BOOT_LOOP="$(losetup --find --show "$target_image")"
+  mkdir -p "$target_mount"
+  mount "$BOOT_LOOP" "$target_mount"
+  TARGET_MOUNT="$target_mount"
+  mkdir -p "$target_mount/usr" "$target_mount/etc" "$target_mount/dev" \
+    "$target_mount/proc" "$target_mount/sys" "$target_mount/run" "$target_mount/boot"
+  for path in usr etc dev proc sys run; do
+    mount --bind "/$path" "$target_mount/$path"
+    BIND_MOUNTS+=("$target_mount/$path")
+  done
+  ln -s usr/bin "$target_mount/bin"
+  ln -s usr/sbin "$target_mount/sbin"
+  ln -s usr/lib "$target_mount/lib"
+  ln -s usr/lib64 "$target_mount/lib64"
   set +e
   strace -ff -yy -s 256 -o "$trace" \
     -e trace=read,pread64,readv,preadv,write,pwrite64,pwritev,pwritev2,writev,lseek,_llseek,truncate,ftruncate,ioctl,mmap,msync,openat,open,close,execve \
-    grub-install --target=i386-pc --boot-directory="$boot" --recheck "$loop"
+    chroot "$target_mount" /usr/sbin/grub-install --target=i386-pc "$loop"
   rc=$?
   set -e
   sync
-  umount "$boot_mount"
-  BOOT_MOUNT=""
+  for ((i=${#BIND_MOUNTS[@]}-1; i>=0; i--)); do
+    umount "${BIND_MOUNTS[i]}"
+  done
+  BIND_MOUNTS=()
+  umount "$target_mount"
+  TARGET_MOUNT=""
   losetup -d "$BOOT_LOOP"
   BOOT_LOOP=""
   cp --reflink=never "$image" "$OUT/$name.after.img"
