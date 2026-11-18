@@ -79,7 +79,8 @@ PY
   mount "$BOOT_LOOP" "$target_mount"
   TARGET_MOUNT="$target_mount"
   mkdir -p "$target_mount/usr" "$target_mount/etc" "$target_mount/dev" \
-    "$target_mount/proc" "$target_mount/sys" "$target_mount/run" "$target_mount/boot"
+    "$target_mount/proc" "$target_mount/sys" "$target_mount/run" "$target_mount/boot" \
+    "$target_mount/tmp" "$target_mount/var/tmp"
   for path in usr etc dev proc sys run; do
     mount --bind "/$path" "$target_mount/$path"
     BIND_MOUNTS+=("$target_mount/$path")
@@ -88,6 +89,7 @@ PY
   ln -s usr/sbin "$target_mount/sbin"
   ln -s usr/lib "$target_mount/lib"
   ln -s usr/lib64 "$target_mount/lib64"
+  chmod 1777 "$target_mount/tmp" "$target_mount/var/tmp"
   set +e
   strace -ff -yy -s 256 -o "$trace" \
     -e trace=read,pread64,readv,preadv,write,pwrite64,pwritev,pwritev2,writev,lseek,_llseek,truncate,ftruncate,ioctl,mmap,msync,openat,open,close,execve \
