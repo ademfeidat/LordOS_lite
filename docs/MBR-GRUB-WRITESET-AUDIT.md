@@ -80,7 +80,7 @@ yet include seek syscalls; the harness is being extended to reconcile every
 write call with its exact byte offset. No backup or rollback implementation
 has been accepted, and no real disk was used.
 
-### Debian 13 write-set observation with trace reconciliation
+### Preliminary Debian 13 observation (not the exact installer invocation)
 
 Run 44363395787 completed successfully on commit
 6304db1bd864f8485d1ecf5a18d62a29c1de95f3. The audit ran inside Debian 13
@@ -97,8 +97,11 @@ module hashes, strace logs, and machine-readable write-audit JSON for both
 cases. The conventional case used first-partition LBA 2048; the reduced-gap
 case used LBA 256. Both grub-install runs succeeded.
 
-The trace parser reconciled every observed target-device write with the
-image-byte differences in both cases:
+The first Debian 13 experiment used an explicit --boot-directory and --recheck
+for isolation. It is useful as a baseline, but it is not the exact installer
+invocation in server/src/install/install.c, which runs grub-install inside the
+new system's chroot without those options. Its trace parser reconciled every
+observed target-device write with the image-byte differences in both cases:
 
 - 115 successful 512-byte block write operations.
 - One merged write interval: byte offset 0, length 58,880 bytes (LBA 0–114).
@@ -114,10 +117,11 @@ The sentinel-filled post-MBR gap was overwritten. Therefore, this GRUB build
 uses LBA 0–114 even when the first partition starts at LBA 256. A gap that
 looks large enough is not evidence that its contents are disposable.
 
-This is a version- and configuration-specific observation, not a universal
-GRUB contract. It does not yet cover logical/EBR layouts, a deliberately
-insufficient gap, alternate module sets, different GRUB command options,
-4Kn media, or backup/restore fault injection. The CI runner exposes other
+This is a version- and configuration-specific preliminary observation, not a
+universal GRUB contract or approval for the real installer path. The exact
+chrooted invocation is being audited separately. This experiment does not yet
+cover logical/EBR layouts, a deliberately insufficient gap, alternate module
+sets, 4Kn media, or backup/restore fault injection. The CI runner exposes other
 block devices to GRUB's probing logic; the parser verified zero writes to
 non-target block devices, but this is not a reason to run the experiment on
 a user's machine. The workflow must remain confined to ephemeral CI runners.
