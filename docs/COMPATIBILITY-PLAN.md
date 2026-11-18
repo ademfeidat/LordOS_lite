@@ -397,9 +397,13 @@ installer execution branch.
 `mbr_busy.c` now provides a separately tested, fail-closed check. It requires
 readable sysfs device numbers, `/proc/self/mountinfo`, `/proc/swaps`, and
 each block device's sysfs `holders` directory. It detects direct mount major/minor
-matches, Btrfs mounts whose mountinfo device number is anonymous but whose
-source names the partition, active swap devices, and active holders such as
-device-mapper/LVM/MD. Missing or malformed state is treated as busy.
+matches, anonymous mount-source matches, active swap devices, and active
+holders such as device-mapper/LVM/MD. Because a multi-device Btrfs mount may
+not identify every member in mountinfo, the current probe conservatively marks
+all candidate disks busy while any Btrfs filesystem is mounted. Overlong or
+malformed proc records and read errors also fail closed. This can cause false
+positives; exact Btrfs member enumeration and kernel-topology VM coverage are
+still required before the policy can be relaxed.
 
 The probe is read-only and supports a fake sysfs/proc root for tests. It is
 currently used only to annotate discovery JSON (`mbrBusy` and per-partition
@@ -430,6 +434,8 @@ mountinfo source matching, active swap, active sysfs holders, and rejection of
 non-MBR snapshots. The fake-tree tests do not emulate every kernel storage
 topology; they are not a substitute for disposable VM tests with dm-crypt,
 LVM, MD RAID, Btrfs multi-device, USB live media, and mounted root filesystems.
+The current Btrfs behavior is intentionally global fail-closed rather than a
+claim that all Btrfs member devices have been identified.
 
 
 ## BIOS GRUB replacement and backup preflight model (planning only)
