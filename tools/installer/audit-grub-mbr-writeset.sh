@@ -101,13 +101,19 @@ with open(before, "rb") as a, open(after, "rb") as b:
 with open(output, "w") as f:
     json.dump(ranges, f, indent=2)
     f.write("\n")
-if not ranges:
-    raise SystemExit("GRUB made no observable image changes")
+PY
+
+  python3 - "$OUT/$name.ranges.json" "$name" "$rc" <<'PY'
+import json, sys
+ranges = json.load(open(sys.argv[1]))
+name, rc = sys.argv[2], int(sys.argv[3])
+if name == "conventional-1mib" and (rc != 0 or not ranges):
+    raise SystemExit("Conventional GRUB install did not succeed with observable disk changes")
 PY
 
   grep -hF "$loop" "$trace"* > "$OUT/$name.loop-writes.txt" || true
-  if [[ ! -s "$OUT/$name.loop-writes.txt" ]]; then
-    echo "Trace did not expose operations against $loop" >&2
+  if [[ ! -s "$OUT/$name.loop-writes.txt" && "$rc" -eq 0 ]]; then
+    echo "Successful GRUB run had no traced operations against $loop" >&2
     return 21
   fi
 
@@ -127,7 +133,9 @@ PY
 
   losetup -d "$loop"
   LOOP=""
-  return "$rc"
+  # The reduced-gap case is diagnostic: GRUB may reject it or may fit. Record
+  # either outcome; only the conventional baseline is a hard success gate.
+  return 0
 }
 
 # The first case uses a conventional 1 MiB gap. The second deliberately
