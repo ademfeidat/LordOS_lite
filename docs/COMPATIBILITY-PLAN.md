@@ -810,10 +810,19 @@ digest mismatches. A directory-fsync failure returns `MJTJ_UNCERTAIN`; the
 caller must stop before beginning the operation whose intent was being
 recorded. It must not interpret an uncertain write as durable.
 
-The test uses regular files and temporary directories only. It covers create,
-read-back, monotonic update, duplicate creation, stale sequence, changed disk
-identity, symlink rejection, checksum tampering, file-fsync failure before
-publication, and directory-fsync failure after atomic publication.
+The journal now also provides an exclusive per-transaction `flock` lock file;
+the write API requires a held lock tied to the same directory descriptor. The
+lock must remain held for the complete install/recovery transaction, not merely
+for each record write. Updates are accepted only when the new plan is exactly
+one legal state-machine transition from the stored plan, and the per-transaction
+format/preservation/swap policy is immutable.
+
+The tests use regular files and temporary directories only. They cover lock
+contention/reacquisition, create, read-back, monotonic update, duplicate
+creation, stale sequence, changed disk identity, immutable policy, rejection
+of an unreachable state transition, symlink rejection, checksum tampering,
+file-fsync failure before publication, and directory-fsync failure after
+atomic publication.
 
 **Integration remains blocked:** this journal is not yet called by
 `install-run` or by a privileged MBR executor. The caller must hold an
