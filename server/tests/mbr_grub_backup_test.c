@@ -131,8 +131,10 @@ int main(void) {
     /* Reject geometries whose byte offsets cannot fit in signed 64-bit off_t. */
     DiskSnapshot huge_snapshot = snapshot;
     MgbSpec huge_spec = spec;
-    huge_snapshot.total_sectors = (uint64_t)INT64_MAX / 512 + 1;
+    huge_snapshot.total_sectors = (uint64_t)INT64_MAX / 512;
     huge_spec.disk_sectors = huge_snapshot.total_sectors;
+    huge_spec.ranges[0].offset = 0;
+    huge_spec.ranges[0].length = huge_spec.disk_sectors * 512;
     CHECK(mgb_backup_fd(disk_ro, dir_fd, "huge.backup", &huge_snapshot, &huge_spec) == MGB_BAD_INPUT);
     CHECK(faccessat(dir_fd, "huge.backup", F_OK, 0) != 0);
 
