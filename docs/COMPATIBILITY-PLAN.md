@@ -865,6 +865,7 @@ production-facing wrapper. The existing dry-run API remains available for
 synthetic images only.
 
 This is still not an `install-run` integration: the privileged executor must
-call the block-device wrapper, independently refresh fail-closed busy/holder
-facts, and verify each selected partition node's major/minor before any
-filesystem or mount operation. The MBR execution mode remains disabled.
+call the block-device wrapper, repeat the fail-closed busy/holder probe
+immediately before the first mutation, and verify each selected partition
+node's major/minor before any filesystem or mount operation. The MBR execution
+mode remains disabled.
