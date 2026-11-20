@@ -24,6 +24,9 @@ typedef struct {
     uint32_t root_part, home_part, swap_part, swap_file_mib;
     uint32_t root_major, root_minor, home_major, home_minor, swap_major, swap_minor;
     char backup_sha256[65]; /* digest of the complete GRUB backup file */
+    /* Immutable identity of the audited GRUB artifact set used for this transaction. */
+    uint64_t grub_write_set_bytes;
+    char grub_manifest_sha256[65];
 } MjtJournalRecord;
 
 typedef struct {
@@ -60,7 +63,7 @@ MjtJournalResult mjtj_read_at(int dir_fd, const char *name,
  * Updates require an existing valid record with that sequence and require the
  * new record sequence to be expected_sequence + 1. The transaction identity,
  * disk identity, geometry, fingerprint, selected partition identities and
- * complete GRUB backup-file SHA-256 cannot change.
+ * complete GRUB backup-file SHA-256, audited GRUB manifest SHA-256 and write-set length cannot change.
  *
  * Writes a temporary file, fsyncs it, atomically links/renames it into place,
  * and fsyncs the directory. MJTJ_UNCERTAIN means the final directory fsync
