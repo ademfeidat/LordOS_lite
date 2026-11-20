@@ -20,6 +20,9 @@ typedef struct {
     char snapshot_sha256[65];
     char transaction_id[33];
     char backup_name[MJTJ_NAME_MAX + 1];
+    /* Exact selected MBR partition identities, captured before any mutation. */
+    uint32_t root_part, home_part, swap_part, swap_file_mib;
+    uint32_t root_major, root_minor, home_major, home_minor, swap_major, swap_minor;
 } MjtJournalRecord;
 
 typedef struct {
