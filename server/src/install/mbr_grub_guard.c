@@ -26,7 +26,8 @@ MggGuardResult mbr_grub_guard_plan(const DiskSnapshot *disk,
     if (mbr_grub_gap_check(disk, core_image_bytes, &available, &required) != MGG_OK)
         return MGG_GUARD_GAP;
     uint64_t write_sectors=(write_set_bytes+511)/512;
-    if (!write_sectors || write_sectors-1>available) return MGG_GUARD_GAP;
+    if (write_sectors<2) return MGG_GUARD_BAD_INPUT;
+    if (write_sectors-1>available) return MGG_GUARD_GAP;
 
     out->backup_first_lba = 0;
     out->backup_sector_count = write_sectors;
