@@ -6,6 +6,8 @@ on:
       - "tools/iso/check-grub-mbr-write-set.sh"
       - "tools/installer/audit-grub-mbr-writeset.sh"
       - "tools/installer/parse-grub-write-trace.py"
+      - "tools/iso/build.sh"
+      - "tools/iso/check-grub-mbr-write-set.sh"
       - "tests/installer_grub_trace_parser_test.py"
       - ".github/workflows/grub-mbr-writeset-audit.yml"
   pull_request:
