@@ -11,7 +11,7 @@
 #include <sys/file.h>
 #include <unistd.h>
 
-#define J_VERSION 1u
+#define J_VERSION 2u
 #define J_MAGIC_OFF 0
 #define J_VERSION_OFF 8
 #define J_LENGTH_OFF 12
@@ -28,6 +28,16 @@
 #define J_FINGERPRINT_OFF 88
 #define J_TXID_OFF 152
 #define J_BACKUP_OFF 184
+#define J_ROOT_PART_OFF 216
+#define J_HOME_PART_OFF 220
+#define J_SWAP_PART_OFF 224
+#define J_SWAP_FILE_OFF 228
+#define J_ROOT_MAJOR_OFF 232
+#define J_ROOT_MINOR_OFF 236
+#define J_HOME_MAJOR_OFF 240
+#define J_HOME_MINOR_OFF 244
+#define J_SWAP_MAJOR_OFF 248
+#define J_SWAP_MINOR_OFF 252
 #define J_DIGEST_OFF 480
 
 static const uint8_t journal_magic[8] = {'L','M','B','R','T','X','N','1'};
@@ -92,6 +102,22 @@ static int plan_valid(const MjtPlan *p) {
     if(p->grub_write_verified && !p->grub_write_started) return 0;
     return 1;
 }
+static int part_identity_valid(uint32_t part,uint32_t ma,uint32_t mi) {
+    return part ? (part<=255 && ma!=0) : (ma==0 && mi==0);
+}
+static int targets_valid(const MjtJournalRecord *r) {
+    if(!part_identity_valid(r->root_part,r->root_major,r->root_minor) ||
+       !r->root_part || !part_identity_valid(r->home_part,r->home_major,r->home_minor) ||
+       !part_identity_valid(r->swap_part,r->swap_major,r->swap_minor)) return 0;
+    if((r->home_part!=0)!=(r->plan.policy.mount_home!=0)) return 0;
+    if(r->home_part && (r->home_part==r->root_part ||
+                        (r->swap_part && r->home_part==r->swap_part))) return 0;
+    if(r->swap_part && r->swap_part==r->root_part) return 0;
+    if(r->swap_file_mib>65536 || (r->swap_part && r->swap_file_mib)) return 0;
+    if(r->plan.policy.initialize_swap !=
+       ((r->swap_part!=0 || r->swap_file_mib!=0) ? 1 : 0)) return 0;
+    return 1;
+}
 static int record_valid(const MjtJournalRecord *r) {
     return r && plan_valid(&r->plan) && r->plan.sequence > 0 &&
         r->st_rdev != 0 && r->disk_sectors > 0 &&
@@ -100,7 +126,7 @@ static int record_valid(const MjtJournalRecord *r) {
         valid_hex(r->snapshot_sha256,64) && valid_hex(r->transaction_id,32) &&
         strnlen(r->backup_name,MJTJ_NAME_MAX+1)>0 &&
         strnlen(r->backup_name,MJTJ_NAME_MAX+1)<=MJTJ_NAME_MAX &&
-        valid_name(r->backup_name);
+        valid_name(r->backup_name) && targets_valid(r);
 }
 static void encode(const MjtJournalRecord *r, uint8_t b[MJTJ_RECORD_SIZE]) {
     memset(b,0,MJTJ_RECORD_SIZE);
@@ -124,6 +150,16 @@ static void encode(const MjtJournalRecord *r, uint8_t b[MJTJ_RECORD_SIZE]) {
     memcpy(b+J_FINGERPRINT_OFF,r->snapshot_sha256,64);
     memcpy(b+J_TXID_OFF,r->transaction_id,32);
     memcpy(b+J_BACKUP_OFF,r->backup_name,strnlen(r->backup_name,MJTJ_NAME_MAX));
+    put32(b+J_ROOT_PART_OFF,r->root_part);
+    put32(b+J_HOME_PART_OFF,r->home_part);
+    put32(b+J_SWAP_PART_OFF,r->swap_part);
+    put32(b+J_SWAP_FILE_OFF,r->swap_file_mib);
+    put32(b+J_ROOT_MAJOR_OFF,r->root_major);
+    put32(b+J_ROOT_MINOR_OFF,r->root_minor);
+    put32(b+J_HOME_MAJOR_OFF,r->home_major);
+    put32(b+J_HOME_MINOR_OFF,r->home_minor);
+    put32(b+J_SWAP_MAJOR_OFF,r->swap_major);
+    put32(b+J_SWAP_MINOR_OFF,r->swap_minor);
     sha256(b,J_DIGEST_OFF,b+J_DIGEST_OFF);
 }
 static int decode(const uint8_t b[MJTJ_RECORD_SIZE], MjtJournalRecord *r) {
@@ -156,6 +192,16 @@ static int decode(const uint8_t b[MJTJ_RECORD_SIZE], MjtJournalRecord *r) {
     memcpy(r->snapshot_sha256,b+J_FINGERPRINT_OFF,64); r->snapshot_sha256[64]=0;
     memcpy(r->transaction_id,b+J_TXID_OFF,32); r->transaction_id[32]=0;
     memcpy(r->backup_name,b+J_BACKUP_OFF,MJTJ_NAME_MAX); r->backup_name[MJTJ_NAME_MAX]=0;
+    r->root_part=get32(b+J_ROOT_PART_OFF);
+    r->home_part=get32(b+J_HOME_PART_OFF);
+    r->swap_part=get32(b+J_SWAP_PART_OFF);
+    r->swap_file_mib=get32(b+J_SWAP_FILE_OFF);
+    r->root_major=get32(b+J_ROOT_MAJOR_OFF);
+    r->root_minor=get32(b+J_ROOT_MINOR_OFF);
+    r->home_major=get32(b+J_HOME_MAJOR_OFF);
+    r->home_minor=get32(b+J_HOME_MINOR_OFF);
+    r->swap_major=get32(b+J_SWAP_MAJOR_OFF);
+    r->swap_minor=get32(b+J_SWAP_MINOR_OFF);
     return record_valid(r) ? 0 : -1;
 }
 static MjtJournalResult read_fd(int fd, MjtJournalRecord *out) {
@@ -233,7 +279,12 @@ static int same_identity(const MjtJournalRecord *a,const MjtJournalRecord *b) {
         a->plan.policy.mount_home==b->plan.policy.mount_home &&
         !strcmp(a->snapshot_sha256,b->snapshot_sha256) &&
         !strcmp(a->transaction_id,b->transaction_id) &&
-        !strcmp(a->backup_name,b->backup_name);
+        !strcmp(a->backup_name,b->backup_name) &&
+        a->root_part==b->root_part && a->home_part==b->home_part &&
+        a->swap_part==b->swap_part && a->swap_file_mib==b->swap_file_mib &&
+        a->root_major==b->root_major && a->root_minor==b->root_minor &&
+        a->home_major==b->home_major && a->home_minor==b->home_minor &&
+        a->swap_major==b->swap_major && a->swap_minor==b->swap_minor;
 }
 static int plan_equal(const MjtPlan *a,const MjtPlan *b) {
     return a->state==b->state && a->sequence==b->sequence &&
