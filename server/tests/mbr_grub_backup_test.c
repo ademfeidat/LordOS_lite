@@ -161,6 +161,8 @@ int main(void) {
     CHECK(S_ISREG(backup_st.st_mode) && (backup_st.st_mode & 0777) == 0600);
     CHECK(symlinkat("grub.backup", dir_fd, "backup-link") == 0);
     CHECK(mgb_verify_backup_fd(disk_ro, dir_fd, "backup-link", &snapshot, &spec) == MGB_BAD_BACKUP);
+    char link_digest[65];
+    CHECK(mgb_backup_digest_at(dir_fd,"backup-link",link_digest)==MGB_BAD_BACKUP);
     CHECK(unlinkat(dir_fd, "backup-link", 0) == 0);
     CHECK(mgb_backup_fd(disk_ro, dir_fd, "grub.backup", &snapshot, &spec) == MGB_EXISTS);
 
@@ -226,7 +228,6 @@ int main(void) {
         char tampered_digest[65];
         CHECK(mgb_backup_digest_at(dir_fd,"grub.backup",tampered_digest)==MGB_OK);
         CHECK(strcmp(backup_digest,tampered_digest)!=0);
-        CHECK(mgb_backup_digest_at(dir_fd,"backup-link",tampered_digest)==MGB_BAD_BACKUP);
         CHECK(mgb_restore_fd(disk_rw, dir_fd, "grub.backup", &snapshot, &spec) == MGB_INTEGRITY);
     }
 
