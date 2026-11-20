@@ -34,11 +34,12 @@ static void test_full_commit(void) {
     CHECK(mjt_apply(&p, MJT_EV_HOME_MOUNTED) == MJT_OK);
     CHECK(mjt_recovery_action(&p) == MJT_RECOVER_CLEANUP_MOUNTS);
     CHECK(mjt_apply(&p, MJT_EV_GRUB_WRITE_BEGIN) == MJT_OK);
-    CHECK(mjt_recovery_action(&p) == MJT_RECOVER_RESTORE_GRUB);
+    CHECK(mjt_recovery_action(&p) == MJT_RECOVER_CLEANUP_MOUNTS);
     CHECK(mjt_apply(&p, MJT_EV_GRUB_WRITE_VERIFIED) == MJT_OK);
     CHECK(mjt_apply(&p, MJT_EV_COMMIT) == MJT_ORDER); /* mounted target cannot be committed */
     CHECK(mjt_apply(&p, MJT_EV_HOME_UNMOUNTED) == MJT_OK);
     CHECK(mjt_apply(&p, MJT_EV_ROOT_UNMOUNTED) == MJT_OK);
+    CHECK(mjt_recovery_action(&p) == MJT_RECOVER_RESTORE_GRUB);
     CHECK(mjt_apply(&p, MJT_EV_COMMIT) == MJT_OK);
     CHECK(p.state == MJT_COMMITTED && mjt_recovery_action(&p) == MJT_RECOVER_NONE);
     CHECK(mjt_apply(&p, MJT_EV_FAILURE) == MJT_TERMINAL);
