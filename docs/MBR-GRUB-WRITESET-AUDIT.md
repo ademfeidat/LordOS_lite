@@ -247,3 +247,30 @@ This is intentional: the current write-set audit is experimental and MBR
 installation is still disabled. Enabling the build gate establishes artifact
 provenance for that ISO; it does not authorize writes, prove gap contents are
 disposable, or complete the transaction/rollback requirements.
+
+
+## Installer-side zero-content gate and exact backup sizing (2026-11-20)
+
+The read-only MBR plan now consumes an explicit audited write-set length. For
+the currently measured Debian 13 amd64 command, the write-set is one contiguous
+interval beginning at byte zero and ending at byte 58,879: 115 sectors
+(LBA 0–114). The proposed GRUB backup therefore covers exactly those 115
+sectors, not an arbitrarily large geometric gap. The plan still requires the
+core image size and the full audited write interval to fit before the first
+partition.
+
+Because the disposable-image experiment proved that GRUB overwrites
+pre-existing sentinel bytes in the post-MBR gap, the plan now reads LBA 1–114
+and refuses to proceed if any byte is non-zero. It also refuses if the bytes
+cannot be read or if the descriptor is not read-only. The MBR sector is not
+part of the zero test; its partition table and disk signature are legitimate
+data and remain covered by the 115-sector backup.
+
+This policy is intentionally conservative: it may reject disks whose gap
+contains harmless vendor metadata or an old boot manager, but it will not
+silently overwrite those bytes. The test suite checks first/last-gap sentinels
+and verifies the integrated planner refuses occupied gaps.
+
+This does not close the provenance gap: the privileged installer must still
+verify the shipped manifest and exact GRUB executable/module hashes before it
+uses the 58,880-byte value. The MBR execution gate remains disabled.
