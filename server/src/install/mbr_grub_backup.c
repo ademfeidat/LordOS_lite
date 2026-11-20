@@ -317,3 +317,40 @@ MgbResult mgb_restore_fd(int disk_fd, int dir_fd, const char *name,
     close(fd);
     return MGB_OK;
 }
+
+MgbResult mgb_backup_digest_at(int dir_fd,const char *name,char out_hex[65]) {
+    if(dir_fd<0 || !valid_name(name) || !out_hex) return MGB_BAD_INPUT;
+    int fd=openat(dir_fd,name,O_RDONLY|O_CLOEXEC|O_NOFOLLOW);
+    if(fd<0) return errno==ELOOP ? MGB_BAD_BACKUP : MGB_IO;
+    struct stat before,after;
+    if(fstat(fd,&before) || !S_ISREG(before.st_mode) || before.st_nlink!=1 ||
+       before.st_uid!=geteuid() || (before.st_mode&0777)!=0600 ||
+       before.st_size<(off_t)MGB_BACKUP_HEADER_SIZE) {
+        close(fd); return MGB_BAD_BACKUP;
+    }
+    Sha256 hash; sha256_init(&hash);
+    uint8_t buf[65536];
+    off_t offset=0;
+    while(offset<before.st_size) {
+        size_t want=(uint64_t)(before.st_size-offset)>sizeof buf ?
+                    sizeof buf : (size_t)(before.st_size-offset);
+        ssize_t got=pread(fd,buf,want,offset);
+        if(got<0 && errno==EINTR) continue;
+        if(got<=0) { close(fd); return MGB_IO; }
+        sha256_update(&hash,buf,(size_t)got);
+        offset+=(off_t)got;
+    }
+    if(fstat(fd,&after) || after.st_dev!=before.st_dev ||
+       after.st_ino!=before.st_ino || after.st_size!=before.st_size ||
+       after.st_mtim.tv_sec!=before.st_mtim.tv_sec ||
+       after.st_mtim.tv_nsec!=before.st_mtim.tv_nsec ||
+       after.st_ctim.tv_sec!=before.st_ctim.tv_sec ||
+       after.st_ctim.tv_nsec!=before.st_ctim.tv_nsec) {
+        close(fd); return MGB_INTEGRITY;
+    }
+    if(close(fd)) return MGB_IO;
+    uint8_t digest[32];
+    sha256_final(&hash,digest);
+    hex_encode(digest,sizeof digest,out_hex);
+    return MGB_OK;
+}
