@@ -19,6 +19,15 @@ int main(void) {
     T(mbr_grub_gap_check(&d,30000,&avail,&need)==MGG_OK);
     T(avail==62 && need==59);
     T(mbr_grub_gap_check(&d,32000,&avail,&need)==MGG_TOO_SMALL);
+    /* The audited GRUB build writes 58,880 bytes (LBA 0..114). */
+    T(mbr_grub_gap_check(&d,58880,&avail,&need)==MGG_TOO_SMALL);
+    d.partitions[0].first_lba=256;
+    T(mbr_grub_gap_check(&d,58880,&avail,&need)==MGG_OK);
+    T(avail==255 && need==115);
+    d.partitions[0].first_lba=63;
+    T(mbr_grub_gap_check(&d,58880,&avail,&need)==MGG_TOO_SMALL);
+    T(avail==62 && need==115);
+    d.partitions[0].first_lba=2048;
     d.partitions[0].first_lba=1;
     T(mbr_grub_gap_check(&d,512,&avail,&need)==MGG_BAD_SNAPSHOT);
     d.partitions[0].first_lba=2048;
