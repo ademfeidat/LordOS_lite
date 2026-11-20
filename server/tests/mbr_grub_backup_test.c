@@ -151,6 +151,9 @@ int main(void) {
     CHECK(faccessat(dir_fd, "huge.backup", F_OK, 0) != 0);
 
     CHECK(mgb_backup_fd(disk_ro, dir_fd, "grub.backup", &snapshot, &spec) == MGB_OK);
+    char backup_digest[65];
+    CHECK(mgb_backup_digest_at(dir_fd,"grub.backup",backup_digest)==MGB_OK);
+    CHECK(strlen(backup_digest)==64);
     CHECK(mgb_verify_backup_fd(disk_ro, dir_fd, "grub.backup", &snapshot, &spec) == MGB_OK);
     CHECK(range_is(disk_rw, 0xA5, TEST_RANGE_BYTES));
     struct stat backup_st;
@@ -220,6 +223,10 @@ int main(void) {
         CHECK(pwrite(backup_rw, &bad, 1, MGB_BACKUP_HEADER_SIZE + 16) == 1);
         close(backup_rw);
         CHECK(mgb_verify_backup_fd(disk_ro, dir_fd, "grub.backup", &snapshot, &spec) == MGB_INTEGRITY);
+        char tampered_digest[65];
+        CHECK(mgb_backup_digest_at(dir_fd,"grub.backup",tampered_digest)==MGB_OK);
+        CHECK(strcmp(backup_digest,tampered_digest)!=0);
+        CHECK(mgb_backup_digest_at(dir_fd,"backup-link",tampered_digest)==MGB_BAD_BACKUP);
         CHECK(mgb_restore_fd(disk_rw, dir_fd, "grub.backup", &snapshot, &spec) == MGB_INTEGRITY);
     }
 
