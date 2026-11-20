@@ -2,6 +2,13 @@
 # Fail closed unless the installed BIOS GRUB binaries and module set match the
 # exact Debian 13 build audited for the current MBR embedding write-set.
 set -eu
+umask 022
+
+MODE=${1:-write}
+case "$MODE" in
+    write|--verify) ;;
+    *) echo "usage: $0 [--verify]" >&2; exit 2 ;;
+esac
 
 EXPECTED_VERSION='2.12-9+deb13u2'
 EXPECTED_GRUB_INSTALL_SHA256='3ba6798ca720c6e1b574eb7227b59da586587111c253d3af566cab3f5233daa5'
@@ -42,8 +49,11 @@ modules_hash=$(find /usr/lib/grub/i386-pc -type f -print0 | sort -z | xargs -0 s
     exit 1
 }
 
+manifest=/usr/share/lordos/grub-mbr-write-set.txt
 install -d -m 0755 /usr/share/lordos
-cat > /usr/share/lordos/grub-mbr-write-set.txt <<EOF
+tmp=$(mktemp /usr/share/lordos/.grub-mbr-write-set.XXXXXX)
+trap 'rm -f "$tmp"' EXIT HUP INT TERM
+cat > "$tmp" <<EOF
 format=1
 audit_run=44364764781
 audit_commit=08c4edec2789621eea074a05059d54e89c6f4f84
@@ -59,5 +69,23 @@ write_offset_bytes=0
 write_length_bytes=58880
 write_last_lba=114
 EOF
+chmod 0644 "$tmp"
+
+if [ "$MODE" = "--verify" ]; then
+    [ -f "$manifest" ] && [ ! -L "$manifest" ] || {
+        echo "Missing or unsafe BIOS GRUB provenance manifest" >&2
+        exit 1
+    }
+    [ "$(stat -c '%u:%a' "$manifest")" = "0:644" ] || {
+        echo "BIOS GRUB provenance manifest has unsafe ownership or mode" >&2
+        exit 1
+    }
+    cmp -s "$tmp" "$manifest" || {
+        echo "BIOS GRUB provenance manifest does not match installed artifacts" >&2
+        exit 1
+    }
+else
+    mv -f "$tmp" "$manifest"
+fi
 
 echo "BIOS GRUB write-set verified: $EXPECTED_VERSION, bytes 0..58879"
