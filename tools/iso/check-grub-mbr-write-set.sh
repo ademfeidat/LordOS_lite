@@ -50,10 +50,9 @@ modules_hash=$(find /usr/lib/grub/i386-pc -type f -print0 | sort -z | xargs -0 s
 }
 
 manifest=/usr/share/lordos/grub-mbr-write-set.txt
-install -d -m 0755 /usr/share/lordos
-tmp=$(mktemp /usr/share/lordos/.grub-mbr-write-set.XXXXXX)
-trap 'rm -f "$tmp"' EXIT HUP INT TERM
-cat > "$tmp" <<EOF
+
+write_manifest() {
+    cat <<EOF
 format=1
 audit_run=44364764781
 audit_commit=08c4edec2789621eea074a05059d54e89c6f4f84
@@ -69,7 +68,7 @@ write_offset_bytes=0
 write_length_bytes=58880
 write_last_lba=114
 EOF
-chmod 0644 "$tmp"
+}
 
 if [ "$MODE" = "--verify" ]; then
     [ -f "$manifest" ] && [ ! -L "$manifest" ] || {
@@ -80,11 +79,16 @@ if [ "$MODE" = "--verify" ]; then
         echo "BIOS GRUB provenance manifest has unsafe ownership or mode" >&2
         exit 1
     }
-    cmp -s "$tmp" "$manifest" || {
+    write_manifest | cmp - "$manifest" || {
         echo "BIOS GRUB provenance manifest does not match installed artifacts" >&2
         exit 1
     }
 else
+    install -d -m 0755 /usr/share/lordos
+    tmp=$(mktemp /usr/share/lordos/.grub-mbr-write-set.XXXXXX)
+    trap 'rm -f "$tmp"' EXIT HUP INT TERM
+    write_manifest > "$tmp"
+    chmod 0644 "$tmp"
     mv -f "$tmp" "$manifest"
 fi
 
