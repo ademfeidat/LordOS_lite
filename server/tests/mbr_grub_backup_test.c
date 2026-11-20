@@ -18,19 +18,31 @@ static int partial_pwrite_calls;
 static int inject_fsync_failure;
 
 extern ssize_t __real_pwrite(int fd, const void *buf, size_t count, off_t offset);
+extern ssize_t __real_pwrite64(int fd, const void *buf, size_t count, off64_t offset);
 extern int __real_fsync(int fd);
 
-ssize_t __wrap_pwrite(int fd, const void *buf, size_t count, off_t offset) {
+static ssize_t test_pwrite(int fd, const void *buf, size_t count, off_t offset,
+                           ssize_t (*real_write)(int, const void *, size_t, off_t)) {
     if (inject_partial_pwrite) {
         partial_pwrite_calls++;
         if (partial_pwrite_calls == 1) {
             size_t partial = count > 128 ? 128 : count;
-            return __real_pwrite(fd, buf, partial, offset);
+            return real_write(fd, buf, partial, offset);
         }
         errno = EIO;
         return -1;
     }
-    return __real_pwrite(fd, buf, count, offset);
+    return real_write(fd, buf, count, offset);
+}
+
+ssize_t __wrap_pwrite(int fd, const void *buf, size_t count, off_t offset) {
+    return test_pwrite(fd, buf, count, offset, __real_pwrite);
+}
+
+/* _FILE_OFFSET_BITS=64 redirects glibc pwrite() calls to pwrite64(). Wrap both
+ * symbols so the partial-write fault injection actually reaches the restore path. */
+ssize_t __wrap_pwrite64(int fd, const void *buf, size_t count, off64_t offset) {
+    return test_pwrite(fd, buf, count, (off_t)offset, __real_pwrite64);
 }
 
 int __wrap_fsync(int fd) {
