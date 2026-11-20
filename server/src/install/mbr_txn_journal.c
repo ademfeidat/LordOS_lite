@@ -179,9 +179,37 @@ static int same_identity(const MjtJournalRecord *a,const MjtJournalRecord *b) {
     return a->st_dev==b->st_dev && a->st_ino==b->st_ino &&
         a->st_rdev==b->st_rdev && a->disk_sectors==b->disk_sectors &&
         a->logical_sector_size==b->logical_sector_size &&
+        a->plan.policy.format_root==b->plan.policy.format_root &&
+        a->plan.policy.format_home==b->plan.policy.format_home &&
+        a->plan.policy.initialize_swap==b->plan.policy.initialize_swap &&
+        a->plan.policy.mount_home==b->plan.policy.mount_home &&
         !strcmp(a->snapshot_sha256,b->snapshot_sha256) &&
         !strcmp(a->transaction_id,b->transaction_id) &&
         !strcmp(a->backup_name,b->backup_name);
+}
+static int plan_equal(const MjtPlan *a,const MjtPlan *b) {
+    return a->state==b->state && a->sequence==b->sequence &&
+        a->mount_mask==b->mount_mask &&
+        a->policy.format_root==b->policy.format_root &&
+        a->policy.format_home==b->policy.format_home &&
+        a->policy.initialize_swap==b->policy.initialize_swap &&
+        a->policy.mount_home==b->policy.mount_home &&
+        a->root_format_started==b->root_format_started &&
+        a->root_format_done==b->root_format_done &&
+        a->home_format_started==b->home_format_started &&
+        a->home_format_done==b->home_format_done &&
+        a->swap_started==b->swap_started && a->swap_done==b->swap_done &&
+        a->grub_write_started==b->grub_write_started &&
+        a->grub_write_verified==b->grub_write_verified &&
+        a->failure_seen==b->failure_seen;
+}
+static int one_valid_transition(const MjtPlan *old,const MjtPlan *next) {
+    for(int ev=MJT_EV_PREFLIGHT_OK;ev<=MJT_EV_RESTORE_VERIFIED;ev++) {
+        MjtPlan candidate=*old;
+        if(mjt_apply(&candidate,(MjtEvent)ev)==MJT_OK && plan_equal(&candidate,next))
+            return 1;
+    }
+    return 0;
 }
 MjtJournalResult mjtj_write_at(int dir_fd,const char *name,
                                const MjtJournalRecord *r,uint64_t expected) {
@@ -194,9 +222,14 @@ MjtJournalResult mjtj_write_at(int dir_fd,const char *name,
     if(expected==0) {
         if(rr==MJTJ_OK) return MJTJ_EXISTS;
         if(rr!=MJTJ_MISSING) return rr;
+        if(r->plan.sequence!=3 || r->plan.state!=MJT_JOURNAL_DURABLE ||
+           r->plan.mount_mask || r->plan.root_format_started ||
+           r->plan.home_format_started || r->plan.swap_started ||
+           r->plan.grub_write_started) return MJTJ_INVALID;
     } else {
         if(rr!=MJTJ_OK) return rr;
-        if(old.plan.sequence!=expected || !same_identity(&old,r)) return MJTJ_STALE;
+        if(old.plan.sequence!=expected || !same_identity(&old,r) ||
+           !one_valid_transition(&old.plan,&r->plan)) return MJTJ_STALE;
     }
     uint64_t nonce;
     if(getrandom(&nonce,sizeof nonce,0)!=(ssize_t)sizeof nonce) return MJTJ_IO;
