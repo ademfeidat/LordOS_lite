@@ -86,6 +86,9 @@ on:
       - "server/src/install/mbr_grub_backup.c"
       - "server/src/install/mbr_grub_backup.h"
       - "server/tests/mbr_grub_backup_test.c"
+      - "server/src/install/mbr_txn_plan.c"
+      - "server/src/install/mbr_txn_plan.h"
+      - "server/tests/mbr_txn_plan_test.c"
   workflow_dispatch:
 
 permissions:
