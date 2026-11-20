@@ -62,6 +62,14 @@ int main(void) {
     stale.plan.sequence=5;
     stale.st_rdev++;
     CHECK(mjtj_write_at(dfd,"install.txn",&stale,4)==MJTJ_STALE);
+    stale=r;
+    stale.plan.sequence=5;
+    stale.plan.state=MJTJ_COMMITTED; /* not reachable from FORMAT_ROOT_BEGIN */
+    CHECK(mjtj_write_at(dfd,"install.txn",&stale,4)==MJTJ_STALE);
+    stale=r;
+    stale.plan.sequence=5;
+    stale.plan.policy.format_home=1; /* consent policy is immutable for a transaction */
+    CHECK(mjtj_write_at(dfd,"install.txn",&stale,4)==MJTJ_STALE);
     CHECK(mjtj_read_at(dfd,"install.txn",&got)==MJTJ_OK && got.plan.sequence==4);
 
     CHECK(symlinkat("install.txn",dfd,"journal-link")==0);
