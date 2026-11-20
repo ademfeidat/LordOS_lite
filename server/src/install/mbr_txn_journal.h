@@ -22,6 +22,13 @@ typedef struct {
     char backup_name[MJTJ_NAME_MAX + 1];
 } MjtJournalRecord;
 
+typedef struct {
+    int fd;
+    uint64_t dir_dev;
+    uint64_t dir_ino;
+    uint8_t held;
+} MjtJournalLock;
+
 typedef enum {
     MJTJ_OK = 0,
     MJTJ_INVALID = -1,
@@ -30,8 +37,15 @@ typedef enum {
     MJTJ_MISSING = -4,
     MJTJ_CORRUPT = -5,
     MJTJ_STALE = -6,
-    MJTJ_UNCERTAIN = -7
+    MJTJ_UNCERTAIN = -7,
+    MJTJ_BUSY = -8
 } MjtJournalResult;
+
+/* Acquire an exclusive per-transaction lock in the trusted journal directory.
+ * Keep it open for the entire installer transaction, not just one journal write. */
+MjtJournalResult mjtj_lock_at(int dir_fd, const char *lock_name,
+                              MjtJournalLock *out);
+void mjtj_unlock(MjtJournalLock *lock);
 
 /* Read a 0600 regular journal file without following symlinks. SHA-256 detects
  * torn/corrupt records; it is not an authentication mechanism. */
@@ -46,8 +60,8 @@ MjtJournalResult mjtj_read_at(int dir_fd, const char *name,
  * Writes a temporary file, fsyncs it, atomically links/renames it into place,
  * and fsyncs the directory. MJTJ_UNCERTAIN means the final directory fsync
  * failed: callers MUST stop and must not begin the operation being journaled. */
-MjtJournalResult mjtj_write_at(int dir_fd, const char *name,
-                               const MjtJournalRecord *record,
+MjtJournalResult mjtj_write_at(int dir_fd, const MjtJournalLock *lock,
+                               const char *name, const MjtJournalRecord *record,
                                uint64_t expected_sequence);
 
 #endif
