@@ -2,6 +2,11 @@
 # Fail closed unless the installed BIOS GRUB binaries and module set match the
 # exact Debian 13 build audited for the current MBR embedding write-set.
 set -eu
+# The privileged verifier must not inherit a caller-controlled executable search path.
+PATH=/usr/sbin:/usr/bin:/sbin:/bin
+export PATH
+LC_ALL=C
+export LC_ALL
 umask 022
 
 MODE=${1:-write}
