@@ -9,6 +9,7 @@ typedef struct {
     uint32_t minor_number;
     uint64_t disk_sectors; /* 512-byte sectors, matching the MBR parser */
     uint32_t logical_sector_size;
+    char kernel_name[64]; /* exact sysfs block name used by the fresh busy probe */
 } MbrDeviceIdentity;
 
 typedef enum {
