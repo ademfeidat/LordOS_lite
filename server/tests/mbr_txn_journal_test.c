@@ -80,6 +80,10 @@ int main(void) {
     CHECK(mjtj_write_at(dfd,&lock,"invalid-target.txn",&bad_target,0)==MJTJ_INVALID);
     bad_target=r; bad_target.root_major=0;
     CHECK(mjtj_write_at(dfd,&lock,"invalid-target.txn",&bad_target,0)==MJTJ_INVALID);
+    bad_target=r; bad_target.grub_write_set_bytes=58881;
+    CHECK(mjtj_write_at(dfd,&lock,"invalid-grub.txn",&bad_target,0)==MJTJ_INVALID);
+    bad_target=r; bad_target.grub_manifest_sha256[0]='G';
+    CHECK(mjtj_write_at(dfd,&lock,"invalid-grub.txn",&bad_target,0)==MJTJ_INVALID);
     CHECK(mjtj_write_at(dfd,&lock,"install.txn",&r,0)==MJTJ_EXISTS);
 
     CHECK(mjt_apply(&r.plan,MJT_EV_ROOT_FORMAT_BEGIN)==MJT_OK);
