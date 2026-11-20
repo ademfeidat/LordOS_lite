@@ -166,14 +166,22 @@ static MjtJournalResult read_fd(int fd, MjtJournalRecord *out) {
     if(lseek(fd,0,SEEK_SET)<0 || full_read(fd,b,sizeof b)) return MJTJ_IO;
     return decode(b,out)==0 ? MJTJ_OK : MJTJ_CORRUPT;
 }
+static int trusted_journal_dir(int dir_fd,struct stat *out) {
+    struct stat ds;
+    if(fstat(dir_fd,&ds) || !S_ISDIR(ds.st_mode) ||
+       ds.st_uid!=geteuid() || (ds.st_mode&0022)!=0) return 0;
+    if(out) *out=ds;
+    return 1;
+}
 MjtJournalResult mjtj_lock_at(int dir_fd,const char *name,MjtJournalLock *out) {
     struct stat ds,ls;
-    if(dir_fd<0 || !out || !valid_name(name) || fstat(dir_fd,&ds) || !S_ISDIR(ds.st_mode))
+    if(dir_fd<0 || !out || !valid_name(name) || !trusted_journal_dir(dir_fd,&ds))
         return MJTJ_INVALID;
     out->fd=-1; out->dir_dev=0; out->dir_ino=0; out->held=0;
     int fd=openat(dir_fd,name,O_RDWR|O_CREAT|O_CLOEXEC|O_NOFOLLOW,0600);
     if(fd<0) return errno==ELOOP ? MJTJ_CORRUPT : MJTJ_IO;
-    if(fstat(fd,&ls) || !S_ISREG(ls.st_mode) || ls.st_nlink!=1 || fchmod(fd,0600)) {
+    if(fstat(fd,&ls) || !S_ISREG(ls.st_mode) || ls.st_nlink!=1 ||
+       ls.st_uid!=geteuid() || fchmod(fd,0600)) {
         close(fd); return MJTJ_CORRUPT;
     }
     int rc;
@@ -195,10 +203,11 @@ void mjtj_unlock(MjtJournalLock *lock) {
 }
 static int lock_valid(int dir_fd,const MjtJournalLock *lock) {
     struct stat ds,ls;
-    if(!lock || !lock->held || lock->fd<0 || fstat(dir_fd,&ds) ||
-       !S_ISDIR(ds.st_mode) || (uint64_t)ds.st_dev!=lock->dir_dev ||
+    if(!lock || !lock->held || lock->fd<0 || !trusted_journal_dir(dir_fd,&ds) ||
+       (uint64_t)ds.st_dev!=lock->dir_dev ||
        (uint64_t)ds.st_ino!=lock->dir_ino || fstat(lock->fd,&ls) ||
-       !S_ISREG(ls.st_mode) || ls.st_nlink!=1 || (ls.st_mode&0777)!=0600)
+       !S_ISREG(ls.st_mode) || ls.st_nlink!=1 || ls.st_uid!=geteuid() ||
+       (ls.st_mode&0777)!=0600)
         return 0;
     int rc;
     do { rc=flock(lock->fd,LOCK_EX|LOCK_NB); } while(rc<0 && errno==EINTR);
