@@ -199,3 +199,31 @@ Do not connect this work to install-run, remove the explicit install.manual.mbr.
 - VM coverage for BIOS boot after successful install and after rollback.
 
 The disposable-image observations above are real CI experiments for the exact recorded Debian 13 GRUB package build and command. They do not establish universal write ranges or production readiness. The backup/restore module and its first automated regular-file test suite have been added to the compatibility branch; the new CI result is pending. No BIOS/MBR manual installation is enabled, and no real disk has been written by this work.
+
+
+## Packaging-to-runtime provenance gap (2026-11-20)
+
+A cross-check of `tools/iso/build.sh` against
+`tools/iso/check-grub-mbr-write-set.sh` found an important integration gap:
+
+- The ISO build selects `grub-common`, `grub2-common`, and `grub-pc-bin`
+  through ordinary Debian package resolution; the package versions are not
+  pinned in `build.sh`.
+- The exact-write-set checker correctly pins Debian 13 package version
+  `2.12-9+deb13u2`, the `grub-install` and `grub-bios-setup` hashes, and the
+  complete `i386-pc` module-set digest, then writes a provenance manifest.
+- However, `build.sh` does not invoke that checker or otherwise enforce the
+  manifest as part of the produced ISO. The existence of the checker therefore
+  does not prove that every built ISO contains the audited GRUB artifacts.
+- The MBR installer path also does not yet consume and verify that manifest
+  before planning or installing GRUB.
+
+This must be resolved before the measured 58,880-byte range can be treated as
+the write-set for a particular LordOS ISO. The eventual integration must make
+the build fail if the audited artifact identity cannot be established, ship the
+resulting immutable provenance manifest inside the ISO, and have the privileged
+installer verify the installed executables/modules against it immediately
+before any GRUB operation. A package-version string alone is insufficient.
+
+No build behavior or installer behavior was changed by this audit. MBR
+installation remains disabled.
