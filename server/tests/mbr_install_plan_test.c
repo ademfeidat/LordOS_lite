@@ -35,6 +35,20 @@ int main(void) {
     T(plan.disk.kind==DS_TABLE_MBR);
     T(plan.mounts.action_count==2 && plan.mounts.actions[0].kind==MP_FORMAT_ROOT_EXT4);
     T(plan.grub.writes_authorized==0 && plan.writes_authorized==0);
+    /* A geometrically sufficient gap is still rejected if any byte in the
+     * audited GRUB embedding interval already contains data. */
+    int mut=open(path,O_RDWR|O_CLOEXEC); T(mut>=0);
+    if(mut>=0) {
+        unsigned char marker=0x6d, zero=0;
+        T(pwrite(mut,&marker,1,512+17)==1);
+        T(fsync(mut)==0);
+        T(!strcmp(mbr_install_plan_build_fd(fd,sectors,512,tag,1,0,&selection,fs,NULL,
+                                             58880,58880,1,&plan),
+                  "install.manual.mbr.grubGapOccupied"));
+        T(pwrite(mut,&zero,1,512+17)==1);
+        T(fsync(mut)==0);
+        close(mut);
+    }
     MbrDeviceIdentity expected_disk={.major_number=8,.minor_number=0,.disk_sectors=sectors,.logical_sector_size=512,.kernel_name="sda"};
     T(!strcmp(mbr_install_plan_build_block_fd(fd,&expected_disk,tag,1,
                                                &selection,fs,NULL,58880,58880,1,&plan),
