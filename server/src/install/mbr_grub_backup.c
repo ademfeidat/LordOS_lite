@@ -105,6 +105,9 @@ static int spec_valid(const DiskSnapshot *d, const MgbSpec *s, uint64_t *data_si
         return 0;
     if (s->disk_sectors > UINT64_MAX / 512) return 0;
     uint64_t disk_bytes = s->disk_sectors * 512, total = 0, previous_end = 0;
+    /* pread/pwrite offsets are signed off_t values on the supported Linux targets.
+     * Reject geometries that cannot be represented before any offset is cast. */
+    if (disk_bytes > (uint64_t)INT64_MAX) return 0;
     for (unsigned i = 0; i < s->range_count; i++) {
         const MgbRange *r = &s->ranges[i];
         if (!r->length || r->offset % 512 || r->length % 512 ||
