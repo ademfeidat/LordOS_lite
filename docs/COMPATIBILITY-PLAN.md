@@ -605,3 +605,71 @@ replacement confirmation, insufficient embedding space, read-only descriptor
 enforcement, and byte-identical sector-zero preservation. This milestone does
 not connect `manual-mbr` to `install-run`; the explicit not-ready gate remains
 in place. No real disk was opened and no write path was enabled.
+
+
+## MBR installer orchestration and upstream conventions (2026-11-20)
+
+A second source-level review compared the MBR work with the existing LordOS
+installer rather than treating the new path as a standalone installer.
+
+The upstream execution contract is:
+
+- `install-disks` is discovery only. It returns disk identity, geometry and
+  change-detection data; it does not authorize a later write.
+- `install-run` parses untrusted UI fields again and is the privileged
+  authority. `validate()` checks the selected disk against the current
+  installable-disk list and re-runs the relevant mode-specific validation.
+- The existing GPT manual path delegates to `manual.c/manualpart.c`; it
+  re-probes the table and checks the saved table tag before changing anything.
+  It then uses a separate undo record and rollback path. Its GPT snapshot,
+  `sgdisk` operations, EFI mounting and `efibootmgr` logic are not suitable
+  for DOS/MBR and are intentionally not reused.
+- Commands are invoked through fixed executable paths and argument arrays,
+  not a shell command string. Errors are returned as installer translation
+  keys, and progress is emitted through the installer's existing progress
+  protocol.
+- Pure policy and plan builders remain separate from privileged I/O. Tests
+  are wired into `make test` / focused Makefile targets and the relevant
+  GitHub Actions path filters.
+
+The new `mbr_install_plan.c/.h` follows those conventions more closely:
+it returns the same kind of localized error key as the existing validation
+helpers, composes the existing MBR selection and mount-plan policies, and
+keeps a strict read-only planning boundary. It probes the already-open
+read-only descriptor once, compares the install-discovery fingerprint, and
+uses the same parsed table for the common snapshot, mount plan and GRUB guard.
+This avoids re-reading the partition table at separate points inside the
+orchestrator. The output is assigned only after every stage succeeds.
+
+The integration test now covers three non-overlapping primary partitions
+(root, preserved/formatted /home, and swap), missing preserved-home UUID,
+unsupported preserved-home filesystem, BIOS-disabled and busy states, stale
+fingerprint, missing bootloader-replacement confirmation, insufficient
+embedding space, invalid root selection, read-only descriptor use, and
+byte-identical MBR sector preservation. The new API returns the specific
+installer error keys (including the underlying selection error) rather than
+collapsing all failures into one generic status.
+
+GitHub Actions run 44763381528 completed successfully. The new orchestration
+compile and test steps passed, followed by the existing installer plan
+integration tests. An earlier run of the expanded test failed because its
+synthetic root and /home extents overlapped; the fixture geometry was corrected
+to represent a valid non-overlapping disk before the successful run.
+
+### Remaining integration requirements
+
+This milestone is still not a privileged install path. Before an eventual
+caller can consume this plan, it must independently prove that the open file
+descriptor is the selected block device (including device identity), obtain
+fresh fail-closed busy-state data, derive the exact GRUB core-image size from
+the shipped artifacts, and revalidate the fingerprint immediately before
+any mutation. The current FNV fingerprint is only a stale-snapshot detector,
+not a cryptographic identity.
+
+The GRUB gap check is geometry-only: it does not prove that sectors in the
+candidate embedding region contain no boot-manager data or other metadata.
+The GRUB backup module is tested independently but is not yet invoked by this
+orchestration layer. There is still no MBR formatting, mounting, fstab write,
+partition-table write, GRUB invocation, rollback integration, or MBR UI
+activation. The explicit `manual-mbr` fail-closed rejection in `install.c`
+remains mandatory.
