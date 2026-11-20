@@ -787,3 +787,39 @@ directory), validate record version/sequence/disk identity/fingerprint at
 startup, and make recovery idempotent. It must also inject failures at every
 write/fsync/rename/mount/format/GRUB boundary and prove the recovery decision.
 The existing `manual-mbr` rejection in `install.c` remains in place.
+
+
+## Atomic MBR transaction journal implementation (2026-11-20)
+
+Added `mbr_txn_journal.c/.h`, a separate durable-record primitive for the
+future MBR executor. It serializes a versioned fixed-size record containing the
+transaction sequence and state-machine flags, selected disk identity fields,
+disk geometry, the SHA-256 snapshot identifier, transaction ID, and the exact
+GRUB backup filename. The record is checksummed with SHA-256 to detect
+corruption or torn content; this is an integrity check, not an authentication
+mechanism.
+
+Creation uses an exclusive no-follow temporary file, mode 0600, complete
+write, file fsync, an atomic no-replace link into the journal name, temporary
+link removal, and containing-directory fsync. Updates require the caller's
+expected previous sequence and immutable transaction/disk identity, write and
+fsync a temporary record, atomically rename it over the prior record, then
+fsync the directory. Reads reject symlinks, non-regular files, unexpected
+permissions/link counts/sizes, malformed fields, unsupported versions, and
+digest mismatches. A directory-fsync failure returns `MJTJ_UNCERTAIN`; the
+caller must stop before beginning the operation whose intent was being
+recorded. It must not interpret an uncertain write as durable.
+
+The test uses regular files and temporary directories only. It covers create,
+read-back, monotonic update, duplicate creation, stale sequence, changed disk
+identity, symlink rejection, checksum tampering, file-fsync failure before
+publication, and directory-fsync failure after atomic publication.
+
+**Integration remains blocked:** this journal is not yet called by
+`install-run` or by a privileged MBR executor. The caller must hold an
+exclusive per-disk transaction lock, populate the identity from a freshly
+verified whole-disk block descriptor, and persist every state transition
+before its corresponding operation. Startup recovery must revalidate the
+device identity and current MBR/EBR fingerprint, classify the last durable
+state, and make cleanup/restore idempotent. The journal does not make
+filesystem formatting reversible, and it does not authorize disk writes.
