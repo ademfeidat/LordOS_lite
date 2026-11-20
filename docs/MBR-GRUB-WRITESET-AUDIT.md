@@ -1,6 +1,6 @@
 # BIOS/MBR GRUB write-set audit gate
 
-Status: **not implemented; no disk-write authorization**.
+Status: **backup/restore implementation present; validation incomplete; no disk-write authorization**.
 
 This document defines the evidence required before LordOS may add a BIOS GRUB installation path for an existing DOS/MBR disk. A calculated embedding gap is not a write-set, and a sector backup limited to LBA 0 plus that gap must not be treated as complete until the shipped GRUB binary has been observed and its writes independently verified.
 
@@ -174,7 +174,7 @@ injection, or BIOS boot verification in a VM.
 
 ## Backup and rollback acceptance
 
-Only after the write-set is stable may backup/restore code be designed. It must:
+The initial backup/restore module now exists in `server/src/install/mbr_grub_backup.c`. It is not connected to `install-run` and is not accepted for production use until the following criteria are demonstrated. It must:
 
 - back up every byte range that the exact GRUB run can modify, including sector 0 and every embedding or auxiliary range observed;
 - store range offsets, lengths, disk geometry, package provenance, and a cryptographic digest for each backup object;
@@ -198,4 +198,4 @@ Do not connect this work to install-run, remove the explicit install.manual.mbr.
 - fail-closed handling for unknown GRUB versions and unknown write ranges;
 - VM coverage for BIOS boot after successful install and after rollback.
 
-No experiment described here has been run yet. This document is a test contract, not a claim that BIOS GRUB backup, installation, or rollback works.
+The disposable-image observations above are real CI experiments for the exact recorded Debian 13 GRUB package build and command. They do not establish universal write ranges or production readiness. The backup/restore module and its first automated regular-file test suite have been added to the compatibility branch; the new CI result is pending. No BIOS/MBR manual installation is enabled, and no real disk has been written by this work.
