@@ -577,3 +577,31 @@ plan/busy/GRUB tests, backup/rollback test, and installer-plan integration
 test all passed. This is still discovery metadata only. It does not connect
 `manual-mbr` to `install-run`, and no formatting, mounting, fstab write, or
 GRUB operation is enabled.
+
+
+## Single-snapshot MBR install orchestration (2026-11-20)
+
+Added `mbr_install_plan.c/.h` as a read-only orchestration layer. It opens no
+devices itself and accepts an already-open read-only descriptor. The function
+performs one MBR/EBR probe, compares the resulting fingerprint with the
+install-discovery token, converts that same parsed table into the snapshot,
+then runs the server-side partition-selection policy, builds the filesystem /
+mount / fstab dry-run plan, and evaluates the BIOS GRUB backup/embedding guard.
+The fresh fingerprint and snapshot are therefore not obtained by separate
+probes inside this orchestration function.
+
+The returned object includes the validated snapshot, ordered mount plan, and
+proposed GRUB backup/embedding ranges. Both top-level and GRUB
+`writes_authorized` fields are explicitly zero. The module does not format,
+mount, create swap, write fstab, create a backup, invoke GRUB, or write disk
+sectors. The exact GRUB core-image byte count and fresh busy-state result remain
+caller-supplied inputs; a future privileged caller must source and validate
+those facts independently. Preserved /home still requires a supported detected
+filesystem and canonical UUID.
+
+The regular-file image test covers a valid dry-run, BIOS-disabled and busy
+states, stale fingerprints, invalid partition selection, missing GRUB
+replacement confirmation, insufficient embedding space, read-only descriptor
+enforcement, and byte-identical sector-zero preservation. This milestone does
+not connect `manual-mbr` to `install-run`; the explicit not-ready gate remains
+in place. No real disk was opened and no write path was enabled.
