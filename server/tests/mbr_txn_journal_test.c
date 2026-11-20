@@ -96,7 +96,8 @@ int main(void) {
     CHECK(mjtj_write_at(dfd,&lock,"install.txn",&stale,4)==MJTJ_STALE);
     stale=r;
     stale.plan.sequence=5;
-    stale.plan.policy.format_home=1; stale.plan.policy.mount_home=1; /* consent policy is immutable for a transaction */
+    stale.plan.policy.format_home=1; stale.plan.policy.mount_home=1;
+    stale.home_part=3; stale.home_major=8; stale.home_minor=3; /* policy and target are internally consistent but immutable */
     CHECK(mjtj_write_at(dfd,&lock,"install.txn",&stale,4)==MJTJ_STALE);
     CHECK(mjtj_read_at(dfd,"install.txn",&got)==MJTJ_OK && got.plan.sequence==4);
 
