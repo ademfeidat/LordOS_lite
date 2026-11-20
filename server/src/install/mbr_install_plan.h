@@ -24,7 +24,7 @@ typedef struct {
 const char *mbr_install_plan_build_fd(int fd, uint64_t disk_sectors,
                                       unsigned logical_sector_size,
                                       const char *expected_fingerprint,
-                                      int bios_booted, int disk_busy,
+                                      int bios_booted,
                                       const MmPlan *selection,
                                       const char *const fstype[DS_MAX_PARTITIONS + 1],
                                       const char *preserved_home_uuid,
