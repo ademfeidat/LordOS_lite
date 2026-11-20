@@ -274,3 +274,24 @@ and verifies the integrated planner refuses occupied gaps.
 This does not close the provenance gap: the privileged installer must still
 verify the shipped manifest and exact GRUB executable/module hashes before it
 uses the 58,880-byte value. The MBR execution gate remains disabled.
+
+## Durable transaction provenance fields (2026-11-20)
+
+The MBR transaction journal format is now version 3. In addition to the disk
+identity, selected partition identities, snapshot digest, and complete backup
+digest, each record stores:
+
+- the exact audited GRUB write-set byte length;
+- the SHA-256 digest of the immutable GRUB provenance manifest.
+
+Both values are validated on decode and are immutable across every journal
+state transition. The write-set length must be non-zero, sector-aligned, and
+bounded; the manifest digest must be a lowercase SHA-256 hex string. Journal
+format v2 is rejected rather than silently interpreted as v3. Tests cover
+round-trip persistence, malformed values, and attempts to change either
+provenance field during a transaction.
+
+This closes only the journal's ability to preserve the identity of the audited
+artifact set. It does **not** implement the privileged runtime manifest
+verifier, establish that the installer is executing the matching GRUB
+binaries, or authorize a disk write. The MBR path remains disabled.
