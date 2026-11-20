@@ -794,8 +794,10 @@ The existing `manual-mbr` rejection in `install.c` remains in place.
 Added `mbr_txn_journal.c/.h`, a separate durable-record primitive for the
 future MBR executor. It serializes a versioned fixed-size record containing the
 transaction sequence and state-machine flags, selected disk identity fields,
-disk geometry, the SHA-256 snapshot identifier, transaction ID, and the exact
-GRUB backup filename. The record is checksummed with SHA-256 to detect
+disk geometry, the SHA-256 snapshot identifier, transaction ID, exact GRUB
+backup filename, and the root/home/swap partition numbers with their captured
+major/minor identities and swap-file size. These target fields are immutable
+across every journal transition; invalid or retargeted selections are rejected. The record is checksummed with SHA-256 to detect
 corruption or torn content; this is an integrity check, not an authentication
 mechanism.
 
@@ -821,8 +823,8 @@ format/preservation/swap policy is immutable.
 
 The tests use regular files and temporary directories only. They cover lock
 contention/reacquisition, create, read-back, monotonic update, duplicate
-creation, stale sequence, changed disk identity, immutable policy, rejection
-of an unreachable state transition, symlink rejection, checksum tampering,
+creation, stale sequence, changed disk identity, changed selected partition identity, immutable policy,
+rejection of an unreachable state transition, symlink rejection, checksum tampering,
 file-fsync failure before publication, and directory-fsync failure after
 atomic publication.
 
