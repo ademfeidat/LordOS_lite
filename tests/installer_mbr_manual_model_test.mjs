@@ -13,6 +13,8 @@ const disk = {
   parts: [{ num: 1, fs: 'ext4' }, { num: 5, fs: 'ext4' }, { num: 6, fs: 'swap' }],
 };
 assert.equal(mbrPartitions(disk).length, 3); // unsupported NTFS type is not offered
+const inventoryFs = { ...disk, parts: [], mbrParts: disk.mbrParts.map((p) => ({ ...p, fs: p.num === 5 ? 'ext4' : '' })) };
+assert.equal(mbrPartitions(inventoryFs).find((p) => p.num === 5).fs, 'ext4'); // MBR inventory's own fs metadata is authoritative
 assert.equal(mbrPartitions({ ...disk, mbrParts: [{ ...disk.mbrParts[0], start: 0 }] }).length, 0); // LBA 0 is the MBR sector
 assert.equal(mbrPartitions({ ...disk, mbrParts: [{ ...disk.mbrParts[0], start: 1, end: Number.MAX_SAFE_INTEGER }] }).length, 0); // byte-size arithmetic must remain a safe integer
 assert.equal(mbrPartitions({ ...disk, mbrBusy: true }).length, 0);
