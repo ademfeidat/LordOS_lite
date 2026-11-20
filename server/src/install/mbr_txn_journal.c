@@ -98,7 +98,9 @@ static int record_valid(const MjtJournalRecord *r) {
         (r->logical_sector_size==512 || r->logical_sector_size==1024 ||
          r->logical_sector_size==2048 || r->logical_sector_size==4096) &&
         valid_hex(r->snapshot_sha256,64) && valid_hex(r->transaction_id,32) &&
-        valid_name(r->backup_name) && strnlen(r->backup_name,MJTJ_NAME_MAX+1)<=MJTJ_NAME_MAX;
+        strnlen(r->backup_name,MJTJ_NAME_MAX+1)>0 &&
+        strnlen(r->backup_name,MJTJ_NAME_MAX+1)<=MJTJ_NAME_MAX &&
+        valid_name(r->backup_name);
 }
 static void encode(const MjtJournalRecord *r, uint8_t b[MJTJ_RECORD_SIZE]) {
     memset(b,0,MJTJ_RECORD_SIZE);
@@ -165,7 +167,9 @@ static MjtJournalResult read_fd(int fd, MjtJournalRecord *out) {
     return decode(b,out)==0 ? MJTJ_OK : MJTJ_CORRUPT;
 }
 MjtJournalResult mjtj_read_at(int dir_fd,const char *name,MjtJournalRecord *out) {
-    if(dir_fd<0 || !valid_name(name) || !out) return MJTJ_INVALID;
+    struct stat ds;
+    if(dir_fd<0 || !valid_name(name) || !out || fstat(dir_fd,&ds) || !S_ISDIR(ds.st_mode))
+        return MJTJ_INVALID;
     int fd=openat(dir_fd,name,O_RDONLY|O_CLOEXEC|O_NOFOLLOW);
     if(fd<0) return errno==ENOENT ? MJTJ_MISSING : (errno==ELOOP ? MJTJ_CORRUPT : MJTJ_IO);
     MjtJournalResult r=read_fd(fd,out);
@@ -182,8 +186,10 @@ static int same_identity(const MjtJournalRecord *a,const MjtJournalRecord *b) {
 }
 MjtJournalResult mjtj_write_at(int dir_fd,const char *name,
                                const MjtJournalRecord *r,uint64_t expected) {
+    struct stat ds;
     if(dir_fd<0 || !valid_name(name) || !record_valid(r) ||
-       expected==UINT64_MAX || r->plan.sequence!=expected+1) return MJTJ_INVALID;
+       expected==UINT64_MAX || fstat(dir_fd,&ds) || !S_ISDIR(ds.st_mode) ||
+       (expected != 0 && r->plan.sequence != expected+1)) return MJTJ_INVALID;
     MjtJournalRecord old;
     MjtJournalResult rr=mjtj_read_at(dir_fd,name,&old);
     if(expected==0) {
@@ -210,7 +216,12 @@ MjtJournalResult mjtj_write_at(int dir_fd,const char *name,
             int e=errno; unlinkat(dir_fd,temp,0);
             return e==EEXIST ? MJTJ_EXISTS : MJTJ_IO;
         }
-        if(unlinkat(dir_fd,temp,0)) return MJTJ_UNCERTAIN;
+        if(unlinkat(dir_fd,temp,0)) {
+            (void)unlinkat(dir_fd,name,0);
+            (void)unlinkat(dir_fd,temp,0);
+            (void)fsync(dir_fd);
+            return MJTJ_UNCERTAIN;
+        }
     } else {
         if(renameat(dir_fd,temp,dir_fd,name)) {
             unlinkat(dir_fd,temp,0); return MJTJ_IO;
