@@ -811,7 +811,9 @@ caller must stop before beginning the operation whose intent was being
 recorded. It must not interpret an uncertain write as durable.
 
 The journal now also provides an exclusive per-transaction `flock` lock file;
-the write API requires a held lock tied to the same directory descriptor. The
+the write API requires a held lock tied to the same directory descriptor. Lock
+acquisition rejects directories not owned by the effective installer user or
+writable by group/other, and rejects lock files not owned by that user. The
 lock must remain held for the complete install/recovery transaction, not merely
 for each record write. Updates are accepted only when the new plan is exactly
 one legal state-machine transition from the stored plan, and the per-transaction
