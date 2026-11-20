@@ -844,12 +844,12 @@ sectors because the current MBR/EBR parser reads 512-byte sectors. The observed
 major/minor, disk sector count and sector size must all match the discovery
 identity. Missing sysfs evidence fails closed.
 
-The regular CI test verifies exact-field comparison and rejects writable
-descriptors, regular files and character devices. It does not have a positive
-real-block-device fixture; disposable VM/loop-device tests are still required
-to prove the sysfs and ioctl path against actual whole disks and partition
-nodes. This helper is not yet called by `install-run` or the MBR plan builder,
-so it does not establish production device identity by itself.
+The regular CI test verifies exact-field comparison, rejects writable
+descriptors, regular files and character devices, and uses a synthetic sysfs
+tree to verify partition-number ancestry and major/minor matching. It cannot
+create a real block node in the ordinary runner, so disposable VM/loop-device
+tests are still required to prove the ioctl and device-node path against actual
+whole disks and partition nodes.
 
 
 ### Identity-gated production planning wrapper
@@ -860,12 +860,15 @@ by unit tests, this production-facing wrapper first checks the already-open
 descriptor against the selected whole-disk major/minor, byte capacity and
 logical sector size, and derives the geometry passed to the one-pass MBR
 planner from the block-device ioctls rather than caller-supplied geometry.
-A regression test confirms that a regular-file image cannot enter this
-production-facing wrapper. The existing dry-run API remains available for
-synthetic images only.
+The wrapper also verifies every selected root, home and swap partition
+against the selected parent disk's sysfs child entry and the corresponding
+`/dev` block node. It runs the conservative live mount/swap/holder probe for
+the whole disk and every parsed partition; unavailable proc/sys evidence fails
+closed. CI verifies the regular-file rejection and synthetic partition
+sysfs cases, but not a positive real block-device path.
 
 This is still not an `install-run` integration: the privileged executor must
-call the block-device wrapper, repeat the fail-closed busy/holder probe
-immediately before the first mutation, and verify each selected partition
-node's major/minor before any filesystem or mount operation. The MBR execution
-mode remains disabled.
+reopen and revalidate the whole disk and selected partition nodes, repeat the
+busy/holder checks immediately before the first mutation, and keep the device
+identity stable through the transaction. The MBR execution mode remains
+disabled.
