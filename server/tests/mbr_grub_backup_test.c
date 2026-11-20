@@ -145,6 +145,7 @@ int main(void) {
         CHECK(mgb_restore_fd(disk_rw, dir_fd, "grub.backup", &snapshot, &spec) == MGB_INTEGRITY);
     }
 
+    unlinkat(dir_fd, "grub.backup", 0);
     close(dir_fd);
     close(disk_ro);
     close(disk_rw);
