@@ -48,6 +48,9 @@ on:
       - "server/src/install/mbr_txn_journal.c"
       - "server/src/install/mbr_txn_journal.h"
       - "server/tests/mbr_txn_journal_test.c"
+      - "server/src/install/mbr_device_identity.c"
+      - "server/src/install/mbr_device_identity.h"
+      - "server/tests/mbr_device_identity_test.c"
   pull_request:
     paths:
       - "apps/installer/mbrmanualmodel.js"
@@ -95,6 +98,9 @@ on:
       - "server/src/install/mbr_txn_journal.c"
       - "server/src/install/mbr_txn_journal.h"
       - "server/tests/mbr_txn_journal_test.c"
+      - "server/src/install/mbr_device_identity.c"
+      - "server/src/install/mbr_device_identity.h"
+      - "server/tests/mbr_device_identity_test.c"
   workflow_dispatch:
 
 permissions:
@@ -166,6 +172,10 @@ jobs:
         run: make -C server SESSIOND=0 build/mbr-txn-journal-test
       - name: Run atomic MBR transaction journal tests
         run: server/build/mbr-txn-journal-test
+      - name: Compile whole-disk block-device identity tests
+        run: make -C server SESSIOND=0 build/mbr-device-identity-test
+      - name: Run whole-disk block-device identity tests
+        run: server/build/mbr-device-identity-test
       - name: Compile installer plan integration tests
         run: make -C server SESSIOND=0 build/install-plan-test
       - name: Run installer plan integration tests
