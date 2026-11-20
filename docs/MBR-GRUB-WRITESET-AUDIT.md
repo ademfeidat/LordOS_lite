@@ -227,3 +227,23 @@ before any GRUB operation. A package-version string alone is insufficient.
 
 No build behavior or installer behavior was changed by this audit. MBR
 installation remains disabled.
+
+
+## Opt-in ISO packaging gate (2026-11-20)
+
+The amd64 ISO build now has an explicit opt-in gate:
+`LORDOS_REQUIRE_AUDITED_MBR_GRUB=1`.
+
+When enabled, `tools/iso/build.sh` copies the provenance checker into the
+target chroot and runs it after installer packages are installed. The checker
+therefore hashes the exact GRUB executables and modules that will be shipped
+inside the ISO and writes
+`/usr/share/lordos/grub-mbr-write-set.txt` into that target root before the
+live filesystem is assembled. A version/hash mismatch fails the opted-in build.
+The option is rejected on arm64 and invalid values fail closed.
+
+Default ISO builds remain unchanged (`LORDOS_REQUIRE_AUDITED_MBR_GRUB=0`).
+This is intentional: the current write-set audit is experimental and MBR
+installation is still disabled. Enabling the build gate establishes artifact
+provenance for that ISO; it does not authorize writes, prove gap contents are
+disposable, or complete the transaction/rollback requirements.
