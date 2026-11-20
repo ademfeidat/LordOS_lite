@@ -37,4 +37,20 @@ MdiResult mbr_device_identity_check_fd(int fd,
                                        const MbrDeviceIdentity *expected,
                                        MbrDeviceIdentity *out);
 
+/* Prove that an MBR partition number resolves beneath the selected disk's
+ * sysfs node and return its current major/minor. */
+MdiResult mbr_partition_sysfs_identity_at(const char *root,
+                                          const MbrDeviceIdentity *disk,
+                                          unsigned partition_number,
+                                          uint32_t *major_number,
+                                          uint32_t *minor_number);
+
+/* Verify the derived /dev partition node is a block node with the same
+ * major/minor reported by that parent disk's sysfs partition entry. */
+MdiResult mbr_partition_device_check_at(const char *root,
+                                        const MbrDeviceIdentity *disk,
+                                        unsigned partition_number,
+                                        uint32_t *major_number,
+                                        uint32_t *minor_number);
+
 #endif
