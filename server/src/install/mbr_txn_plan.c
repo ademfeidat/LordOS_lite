@@ -9,7 +9,7 @@ static int terminal(MjtState s) {
 MjtResult mjt_init(MjtPlan *p, const MjtPolicy *policy) {
     if (!p || !policy || policy->format_root > 1 || policy->format_home > 1 ||
         policy->initialize_swap > 1 || policy->mount_home > 1 ||
-        !policy->format_root)
+        !policy->format_root || (policy->format_home && !policy->mount_home))
         return MJT_INVALID;
     memset(p, 0, sizeof *p);
     p->policy = *policy;
@@ -129,12 +129,18 @@ MjtResult mjt_apply(MjtPlan *p, MjtEvent ev) {
     case MJT_EV_FAILURE:
         if (p->state < MJT_JOURNAL_DURABLE) {
             p->state = MJT_ABORTED;
-        } else if (p->grub_write_started) {
+        } else if (p->grub_write_started || p->mount_mask) {
             p->state = MJT_RECOVERY_REQUIRED;
         } else {
             p->state = MJT_ABORTED;
         }
         p->failure_seen = 1;
+        break;
+    case MJT_EV_CLEANUP_VERIFIED:
+        if (p->state != MJT_RECOVERY_REQUIRED || p->grub_write_started ||
+            p->mount_mask != 0)
+            return reject(MJT_ORDER);
+        p->state = MJT_ABORTED;
         break;
     case MJT_EV_RESTORE_VERIFIED:
         if (p->state != MJT_RECOVERY_REQUIRED || !p->grub_write_started ||
@@ -154,9 +160,9 @@ MjtRecoveryAction mjt_recovery_action(const MjtPlan *p) {
         p->state == MJT_BACKUP_DURABLE || p->state == MJT_COMMITTED ||
         p->state == MJT_ABORTED || p->state == MJT_RESTORED)
         return MJT_RECOVER_NONE;
+    if (p->mount_mask) return MJT_RECOVER_CLEANUP_MOUNTS;
     if (p->grub_write_started) return MJT_RECOVER_RESTORE_GRUB;
     if (p->root_format_started || p->home_format_started || p->swap_started)
         return MJT_RECOVER_INSPECT_FILESYSTEMS;
-    if (p->mount_mask) return MJT_RECOVER_CLEANUP_MOUNTS;
     return MJT_RECOVER_NONE;
 }
