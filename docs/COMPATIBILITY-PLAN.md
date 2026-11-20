@@ -489,7 +489,8 @@ A regular-file image test now covers backup creation without modifying the
 image, mode/regular-file checks, symlink rejection, duplicate backup refusal,
 wrong-disk refusal, overlapping-range rejection, simulated GRUB overwrite,
 byte-exact restoration, refusal to restore through a read-only descriptor,
-and backup-payload tampering detection. The module is included in the server
+backup-payload tampering detection, injected partial-write failure, and injected
+fsync failure followed by a verified retry. The module is included in the server
 build and the focused MBR GitHub Actions workflow.
 
 **Validation state:** CI result for this new test is pending. The module is
