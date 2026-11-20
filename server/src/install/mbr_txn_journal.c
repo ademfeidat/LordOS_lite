@@ -1,5 +1,4 @@
 /* mbr_txn_journal.c — atomic, checksummed journal persistence. */
-#define _GNU_SOURCE
 #include "mbr_txn_journal.h"
 #include "../pkg/crypto.h"
 
