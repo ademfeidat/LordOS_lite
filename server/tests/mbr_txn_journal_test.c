@@ -72,7 +72,7 @@ int main(void) {
     MjtJournalRecord bad_target=r;
     bad_target.root_part=0;
     CHECK(mjtj_write_at(dfd,&lock,"invalid-target.txn",&bad_target,0)==MJTJ_INVALID);
-    bad_target=r; bad_target.root_major=9;
+    bad_target=r; bad_target.root_major=0;
     CHECK(mjtj_write_at(dfd,&lock,"invalid-target.txn",&bad_target,0)==MJTJ_INVALID);
     CHECK(mjtj_write_at(dfd,&lock,"install.txn",&r,0)==MJTJ_EXISTS);
 
