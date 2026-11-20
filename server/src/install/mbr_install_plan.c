@@ -1,13 +1,14 @@
 /* mbr_install_plan.c — single-snapshot dry-run orchestration. */
 #include "mbr_install_plan.h"
 #include "mbr_disk.h"
+#include "mbr_busy.h"
 
 #include <string.h>
 
 const char *mbr_install_plan_build_fd(int fd, uint64_t disk_sectors,
                                       unsigned logical_sector_size,
                                       const char *expected_fingerprint,
-                                      int bios_booted, int disk_busy,
+                                      int bios_booted,
                                       const MmPlan *selection,
                                       const char *const fstype[DS_MAX_PARTITIONS + 1],
                                       const char *preserved_home_uuid,
@@ -84,9 +85,17 @@ const char *mbr_install_plan_build_block_fd(
     MbrDeviceIdentity observed;
     MdiResult identity=mbr_device_identity_check_fd(fd,expected,&observed);
     if(identity!=MDI_OK) return "install.manual.mbr.deviceIdentity";
-    return mbr_install_plan_build_fd(fd,observed.disk_sectors,
+    const char *why=mbr_install_plan_build_fd(fd,observed.disk_sectors,
                                      observed.logical_sector_size,
-                                     expected_fingerprint,bios_booted,disk_busy,
+                                     expected_fingerprint,bios_booted,0,
                                      selection,fstype,preserved_home_uuid,
                                      grub_core_bytes,replacement_confirmed,out);
+    if(why) return why;
+    /* Probe busy state from the just-parsed snapshot and the kernel name derived
+     * from the same verified block descriptor. Missing proc/sys facts fail closed. */
+    if(mbr_snapshot_busy_at("",observed.kernel_name,&out->disk)) {
+        memset(out,0,sizeof *out);
+        return "install.manual.mbr.busy";
+    }
+    return NULL;
 }
