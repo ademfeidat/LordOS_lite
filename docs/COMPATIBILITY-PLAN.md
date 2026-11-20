@@ -795,9 +795,10 @@ Added `mbr_txn_journal.c/.h`, a separate durable-record primitive for the
 future MBR executor. It serializes a versioned fixed-size record containing the
 transaction sequence and state-machine flags, selected disk identity fields,
 disk geometry, the SHA-256 snapshot identifier, transaction ID, exact GRUB
-backup filename, and the root/home/swap partition numbers with their captured
-major/minor identities and swap-file size. These target fields are immutable
-across every journal transition; invalid or retargeted selections are rejected. The record is checksummed with SHA-256 to detect
+backup filename and complete backup-file SHA-256, and the root/home/swap
+partition numbers with their captured major/minor identities and swap-file
+size. These target fields and the backup digest are immutable across every
+journal transition; invalid or retargeted selections are rejected. The record is checksummed with SHA-256 to detect
 corruption or torn content; this is an integrity check, not an authentication
 mechanism.
 
@@ -812,6 +813,12 @@ digest mismatches. A directory-fsync failure returns `MJTJ_UNCERTAIN`; the
 caller must stop before beginning the operation whose intent was being
 recorded. It must not interpret an uncertain write as durable.
 
+The GRUB backup module exposes a read-only full-file SHA-256 operation. It
+requires a private 0600 regular file owned by the installer, rejects symlinks,
+and checks file metadata before and after hashing. The journal v2 stores this
+digest so reboot-time recovery can prove it is using the exact backup artifact,
+not merely a file with the expected name.
+
 The journal now also provides an exclusive per-transaction `flock` lock file;
 the write API requires a held lock tied to the same directory descriptor. Lock
 acquisition rejects directories not owned by the effective installer user or
@@ -823,7 +830,8 @@ format/preservation/swap policy is immutable.
 
 The tests use regular files and temporary directories only. They cover lock
 contention/reacquisition, create, read-back, monotonic update, duplicate
-creation, stale sequence, changed disk identity, changed selected partition identity, immutable policy,
+creation, stale sequence, changed disk identity, changed selected partition identity, backup digest
+round-trip, immutable policy,
 rejection of an unreachable state transition, symlink rejection, checksum tampering,
 file-fsync failure before publication, and directory-fsync failure after
 atomic publication.
