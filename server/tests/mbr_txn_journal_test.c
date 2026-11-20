@@ -94,6 +94,10 @@ int main(void) {
     CHECK(mjtj_write_at(dfd,&lock,"install.txn",&stale,4)==MJTJ_STALE);
     stale=r;
     stale.plan.sequence=5;
+    stale.backup_sha256[0]='d'; /* backup artifact identity is immutable */
+    CHECK(mjtj_write_at(dfd,&lock,"install.txn",&stale,4)==MJTJ_STALE);
+    stale=r;
+    stale.plan.sequence=5;
     stale.plan.state=MJT_COMMITTED; /* not reachable from FORMAT_ROOT_BEGIN */
     CHECK(mjtj_write_at(dfd,&lock,"install.txn",&stale,4)==MJTJ_STALE);
     stale=r;
