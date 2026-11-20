@@ -13,11 +13,13 @@ const char *mbr_install_plan_build_fd(int fd, uint64_t disk_sectors,
                                       const char *const fstype[DS_MAX_PARTITIONS + 1],
                                       const char *preserved_home_uuid,
                                       uint64_t grub_core_bytes,
+                                      uint64_t grub_write_set_bytes,
                                       int replacement_confirmed,
                                       MipPlan *out) {
     if (out) memset(out, 0, sizeof *out);
     if (fd < 0 || !expected_fingerprint || !selection || !fstype || !out ||
-        !grub_core_bytes) return "install.manual.mbr.badPlan";
+        !grub_core_bytes || !grub_write_set_bytes)
+        return "install.manual.mbr.badPlan";
 
     MbrTable table;
     char observed[40];
@@ -53,7 +55,7 @@ const char *mbr_install_plan_build_fd(int fd, uint64_t disk_sectors,
         return "install.manual.mbr.mountPlan";
 
     MggGuardResult gr = mbr_grub_guard_plan(
-        &plan.disk, grub_core_bytes, bios_booted, disk_busy,
+        &plan.disk, grub_core_bytes, grub_write_set_bytes, bios_booted, disk_busy,
         expected_fingerprint, observed, replacement_confirmed, &plan.grub);
     switch (gr) {
         case MGG_GUARD_OK: break;
@@ -80,6 +82,7 @@ const char *mbr_install_plan_build_block_fd(
                                       const char *const fstype[DS_MAX_PARTITIONS + 1],
                                       const char *preserved_home_uuid,
                                       uint64_t grub_core_bytes,
+                                      uint64_t grub_write_set_bytes,
                                       int replacement_confirmed,
                                       MipPlan *out) {
     MbrDeviceIdentity observed;
@@ -89,7 +92,8 @@ const char *mbr_install_plan_build_block_fd(
                                      observed.logical_sector_size,
                                      expected_fingerprint,bios_booted,0,
                                      selection,fstype,preserved_home_uuid,
-                                     grub_core_bytes,replacement_confirmed,out);
+                                     grub_core_bytes,grub_write_set_bytes,
+                                     replacement_confirmed,out);
     if(why) return why;
     /* Resolve each selected partition beneath the same parent disk in sysfs,
      * then compare its /dev node's block major/minor to that exact child. */
