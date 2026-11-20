@@ -1188,9 +1188,9 @@ build/mbr-mount-plan-test: tests/mbr_mount_plan_test.c src/install/mbr_mount_pla
 
 # Single-snapshot MBR install orchestration; read-only dry-run only.
 test: build/mbr-install-plan-test
-build/mbr-install-plan-test: tests/mbr_install_plan_test.c src/install/mbr_install_plan.c src/install/mbr_install_plan.h src/install/mbr_mount_plan.c src/install/mbr_grub_guard.c src/install/mbr_grub_gap.c src/install/mbr_disk.c src/install/mbr.c src/install/disk_snapshot.c src/install/mbr_manual.c src/install/mbr_device_identity.c
+build/mbr-install-plan-test: tests/mbr_install_plan_test.c src/install/mbr_install_plan.c src/install/mbr_install_plan.h src/install/mbr_mount_plan.c src/install/mbr_grub_guard.c src/install/mbr_grub_gap.c src/install/mbr_disk.c src/install/mbr.c src/install/disk_snapshot.c src/install/mbr_manual.c src/install/mbr_device_identity.c src/install/mbr_busy.c
 	@mkdir -p build
-	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -std=c11 -D_FILE_OFFSET_BITS=64 -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer -o $@ tests/mbr_install_plan_test.c src/install/mbr_install_plan.c src/install/mbr_mount_plan.c src/install/mbr_grub_guard.c src/install/mbr_grub_gap.c src/install/mbr_disk.c src/install/mbr.c src/install/disk_snapshot.c src/install/mbr_manual.c src/install/mbr_device_identity.c
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -std=c11 -D_FILE_OFFSET_BITS=64 -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer -o $@ tests/mbr_install_plan_test.c src/install/mbr_install_plan.c src/install/mbr_mount_plan.c src/install/mbr_grub_guard.c src/install/mbr_grub_gap.c src/install/mbr_disk.c src/install/mbr.c src/install/disk_snapshot.c src/install/mbr_manual.c src/install/mbr_device_identity.c src/install/mbr_busy.c
 	./$@ || { rm -f $@; exit 1; }
 
 # Fail-closed read-only MBR busy-state detection on a fake /proc + /sys tree.
