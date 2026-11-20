@@ -11,7 +11,7 @@
 #include <sys/file.h>
 #include <unistd.h>
 
-#define J_VERSION 2u
+#define J_VERSION 3u /* v3 adds immutable GRUB manifest/write-set provenance */
 #define J_MAGIC_OFF 0
 #define J_VERSION_OFF 8
 #define J_LENGTH_OFF 12
