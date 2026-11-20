@@ -14,6 +14,7 @@ const disk = {
 };
 assert.equal(mbrPartitions(disk).length, 3); // unsupported NTFS type is not offered
 assert.equal(mbrPartitions({ ...disk, mbrParts: [{ ...disk.mbrParts[0], start: 0 }] }).length, 0); // LBA 0 is the MBR sector
+assert.equal(mbrPartitions({ ...disk, mbrParts: [{ ...disk.mbrParts[0], start: 1, end: Number.MAX_SAFE_INTEGER }] }).length, 0); // byte-size arithmetic must remain a safe integer
 assert.equal(mbrPartitions({ ...disk, mbrBusy: true }).length, 0);
 assert.equal(mbrPartitions({ ...disk, mbrParts: disk.mbrParts.map((p) => p.num === 5 ? { ...p, busy: true } : p) }).some((p) => p.num === 5), false);
 let s = emptyMbrManual();
