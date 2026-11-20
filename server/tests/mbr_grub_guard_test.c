@@ -12,17 +12,17 @@ int main(void) {
     d.partitions[0]=(DsPartition){.number=1,.first_lba=2048,.last_lba=90000,.type_code=0x83};
     const char *tag="0123456789abcdef-100000";
     MggGuardPlan p;
-    T(mbr_grub_guard_plan(&d,1024*1024-512,0,0,tag,tag,1,&p)==MGG_GUARD_NEED_BIOS);
-    T(mbr_grub_guard_plan(&d,1024*1024-512,1,1,tag,tag,1,&p)==MGG_GUARD_BUSY);
-    T(mbr_grub_guard_plan(&d,1024*1024-512,1,0,tag,"fedcba9876543210-100000",1,&p)==MGG_GUARD_STALE);
-    T(mbr_grub_guard_plan(&d,1024*1024-512,1,0,tag,tag,0,&p)==MGG_GUARD_CONFIRM_REPLACEMENT);
-    T(mbr_grub_guard_plan(&d,1024*1024,1,0,tag,tag,1,&p)==MGG_GUARD_GAP);
-    T(mbr_grub_guard_plan(&d,1024*1024-512,1,0,tag,tag,1,&p)==MGG_GUARD_OK);
-    T(p.backup_first_lba==0 && p.backup_sector_count==2048);
+    T(mbr_grub_guard_plan(&d,1024*1024-512,58880,0,0,tag,tag,1,&p)==MGG_GUARD_NEED_BIOS);
+    T(mbr_grub_guard_plan(&d,1024*1024-512,58880,1,1,tag,tag,1,&p)==MGG_GUARD_BUSY);
+    T(mbr_grub_guard_plan(&d,1024*1024-512,58880,1,0,tag,"fedcba9876543210-100000",1,&p)==MGG_GUARD_STALE);
+    T(mbr_grub_guard_plan(&d,1024*1024-512,58880,1,0,tag,tag,0,&p)==MGG_GUARD_CONFIRM_REPLACEMENT);
+    T(mbr_grub_guard_plan(&d,1024*1024,58880,1,0,tag,tag,1,&p)==MGG_GUARD_GAP);
+    T(mbr_grub_guard_plan(&d,1024*1024-512,58880,1,0,tag,tag,1,&p)==MGG_GUARD_OK);
+    T(p.backup_first_lba==0 && p.backup_sector_count==115);
     T(p.embedding_first_lba==1 && p.embedding_sector_count==2047);
-    T(p.required_core_sectors==2047);
+    T(p.required_core_sectors==2047 && p.write_set_sector_count==115);
     T(p.existing_boot_manager_may_be_replaced==1 && p.writes_authorized==0);
-    T(mbr_grub_guard_plan(&d,1,1,0,NULL,tag,1,&p)==MGG_GUARD_BAD_INPUT);
+    T(mbr_grub_guard_plan(&d,1,58880,1,0,NULL,tag,1,&p)==MGG_GUARD_BAD_INPUT);
     printf("%d checks, %d failures\n",checks,failures);
     return failures?1:0;
 }
