@@ -129,6 +129,18 @@ cp "$DEB" "$CH/tmp/lordos.deb"
 cp "$HWDEB" "$CH/tmp/lordos-hwdata.deb"
 cp "$RCDEB" "$CH/tmp/lordos-rclone.deb"
 in_ch apt-get install -y -q --no-install-recommends /tmp/lordos-hwdata.deb /tmp/lordos-rclone.deb /tmp/lordos.deb >> "$WORK/apt.log" 2>&1 || { tail -30 "$WORK/apt.log"; exit 1; }
+# Optional, fail-closed provenance gate for experimental BIOS/MBR installer work.
+# Ordinary ISO builds remain unchanged until the audited GRUB build is explicitly requested.
+case "${LORDOS_REQUIRE_AUDITED_MBR_GRUB:-0}" in
+    0) ;;
+    1)
+        [ "$ARCH" = amd64 ] || { echo "audited BIOS GRUB provenance is available only for amd64" >&2; exit 1; }
+        install -D -m 0755 "$ROOT/tools/iso/check-grub-mbr-write-set.sh" \
+            "$CH/usr/libexec/lordos/check-grub-mbr-write-set"
+        in_ch /bin/sh /usr/libexec/lordos/check-grub-mbr-write-set
+        ;;
+    *) echo "LORDOS_REQUIRE_AUDITED_MBR_GRUB must be 0 or 1" >&2; exit 1 ;;
+esac
 # the browsers' defaults (their own bar with LordOS's window buttons), shared with the Pi image
 sh tools/iso/browser-defaults.sh "$CH"
 install -D -m 644 tools/iso/rootfs/etc/wireplumber/wireplumber.conf.d/lordos-bluez.conf "$CH/etc/wireplumber/wireplumber.conf.d/lordos-bluez.conf"
