@@ -52,7 +52,7 @@ void mjtj_unlock(MjtJournalLock *lock);
 MjtJournalResult mjtj_read_at(int dir_fd, const char *name,
                               MjtJournalRecord *out);
 
-/* expected_sequence == 0 creates sequence 1 without replacing an existing file.
+/* expected_sequence == 0 creates the initial durable JOURNAL_DURABLE record (sequence 3) without replacing an existing file.
  * Updates require an existing valid record with that sequence and require the
  * new record sequence to be expected_sequence + 1. The transaction identity,
  * disk identity, geometry, fingerprint and backup name cannot change.
