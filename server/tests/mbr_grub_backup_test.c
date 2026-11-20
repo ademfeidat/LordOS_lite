@@ -2,6 +2,7 @@
 #include "../src/install/mbr_grub_backup.h"
 #include "../src/pkg/crypto.h"
 
+#include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
