@@ -15,7 +15,7 @@ typedef enum {
 
 typedef struct {
     uint64_t backup_first_lba;       /* always 0: includes the MBR */
-    uint64_t backup_sector_count;    /* proposed full pre-partition region */
+    uint64_t backup_sector_count;    /* exact audited contiguous write-set from LBA 0 */
     uint64_t embedding_first_lba;    /* candidate starts at LBA 1 */
     uint64_t embedding_sector_count;
     uint64_t required_core_sectors;
