@@ -529,3 +529,18 @@ is reserved for the MBR sector, or whose end lies outside the disk. The
 regression test covers both a zero start and an out-of-disk start. The
 validator remains read-only and the `manual-mbr` install-run gate remains
 closed; this is not an installation-readiness claim.
+
+
+### MBR sector-zero and exact GRUB-gap regression cases
+
+The independent MBR selection validator now rejects any partition extent that
+claims LBA 0, in addition to rejecting an extended container that starts there.
+LBA 0 is the MBR sector and cannot be part of a DOS partition. Regression
+coverage includes both malformed cases.
+
+The GRUB gap tests now use the measured 58,880-byte write-set from the audited
+GRUB build: a first partition at LBA 256 has 255 candidate sectors and passes
+the geometry threshold; the conventional LBA 2048 start also passes; the
+legacy LBA 63 start has only 62 candidate sectors and is rejected. This
+validates only capacity, not that those sectors are safe to overwrite. The
+actual install path remains disabled.
