@@ -33,6 +33,7 @@ static void fill_record(MjtJournalRecord *r) {
     memset(r->snapshot_sha256,'a',64); r->snapshot_sha256[64]=0;
     memset(r->transaction_id,'b',32); r->transaction_id[32]=0;
     strcpy(r->backup_name,"grub.backup");
+    r->root_part=2; r->root_major=8; r->root_minor=2;
 }
 int main(void) {
     char tmp[]="/tmp/lordos-mbr-journal-XXXXXX";
@@ -67,6 +68,12 @@ int main(void) {
     CHECK(mjtj_read_at(dfd,"install.txn",&got)==MJTJ_OK);
     CHECK(got.plan.sequence==3 && got.plan.state==MJT_JOURNAL_DURABLE);
     CHECK(got.st_rdev==r.st_rdev && !strcmp(got.snapshot_sha256,r.snapshot_sha256));
+    CHECK(got.root_part==2 && got.root_major==8 && got.root_minor==2);
+    MjtJournalRecord bad_target=r;
+    bad_target.root_part=0;
+    CHECK(mjtj_write_at(dfd,&lock,"invalid-target.txn",&bad_target,0)==MJTJ_INVALID);
+    bad_target=r; bad_target.root_major=9;
+    CHECK(mjtj_write_at(dfd,&lock,"invalid-target.txn",&bad_target,0)==MJTJ_INVALID);
     CHECK(mjtj_write_at(dfd,&lock,"install.txn",&r,0)==MJTJ_EXISTS);
 
     CHECK(mjt_apply(&r.plan,MJT_EV_ROOT_FORMAT_BEGIN)==MJT_OK);
