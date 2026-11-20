@@ -318,3 +318,11 @@ transaction, and `manual-mbr` remains explicitly rejected. The next step is to
 invoke this fixed verifier from the privileged MBR path after copying the
 system and immediately before any GRUB operation, then bind its verified
 write-set length and manifest digest into the durable transaction record.
+
+
+The `--verify` path is read-only: it streams the canonical expected manifest
+to `cmp` and does not create a temporary file or rewrite the installed
+manifest. The disposable workflow checks that verification leaves the
+manifest directory entries unchanged, and rejects content tampering, unsafe
+file mode, and symlink substitution. This remains a packaging/runtime-image
+verification primitive; it is not yet called by `install-run`.
