@@ -70,3 +70,23 @@ const char *mbr_install_plan_build_fd(int fd, uint64_t disk_sectors,
     *out = plan;
     return NULL;
 }
+
+const char *mbr_install_plan_build_block_fd(
+                                      int fd, const MbrDeviceIdentity *expected,
+                                      const char *expected_fingerprint,
+                                      int bios_booted, int disk_busy,
+                                      const MmPlan *selection,
+                                      const char *const fstype[DS_MAX_PARTITIONS + 1],
+                                      const char *preserved_home_uuid,
+                                      uint64_t grub_core_bytes,
+                                      int replacement_confirmed,
+                                      MipPlan *out) {
+    MbrDeviceIdentity observed;
+    MdiResult identity=mbr_device_identity_check_fd(fd,expected,&observed);
+    if(identity!=MDI_OK) return "install.manual.mbr.deviceIdentity";
+    return mbr_install_plan_build_fd(fd,observed.disk_sectors,
+                                     observed.logical_sector_size,
+                                     expected_fingerprint,bios_booted,disk_busy,
+                                     selection,fstype,preserved_home_uuid,
+                                     grub_core_bytes,replacement_confirmed,out);
+}
