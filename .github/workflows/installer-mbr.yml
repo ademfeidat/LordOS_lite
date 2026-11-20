@@ -83,6 +83,9 @@ on:
       - "server/src/install/mbr_grub_guard.c"
       - "server/src/install/mbr_grub_guard.h"
       - "server/tests/mbr_grub_guard_test.c"
+      - "server/src/install/mbr_grub_backup.c"
+      - "server/src/install/mbr_grub_backup.h"
+      - "server/tests/mbr_grub_backup_test.c"
   workflow_dispatch:
 
 permissions:
@@ -138,10 +141,6 @@ jobs:
         run: cc -std=c11 -Wall -Wextra -Werror -D_FILE_OFFSET_BITS=64 -Iserver/src -o /tmp/mbr-grub-guard-test server/tests/mbr_grub_guard_test.c server/src/install/mbr_grub_guard.c server/src/install/mbr_grub_gap.c server/src/install/mbr_disk.c server/src/install/mbr.c server/src/install/disk_snapshot.c
       - name: Run planning-only BIOS GRUB guard tests
         run: /tmp/mbr-grub-guard-test
-      - name: Compile MBR GRUB backup and rollback tests
-        run: make -C server SESSIOND=0 build/mbr-grub-backup-test
-      - name: Run MBR GRUB backup and rollback tests
-        run: server/build/mbr-grub-backup-test
       - name: Compile MBR GRUB backup and rollback tests
         run: make -C server SESSIOND=0 build/mbr-grub-backup-test
       - name: Run MBR GRUB backup and rollback tests
