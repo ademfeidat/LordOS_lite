@@ -884,3 +884,29 @@ reopen and revalidate the whole disk and selected partition nodes, repeat the
 busy/holder checks immediately before the first mutation, and keep the device
 identity stable through the transaction. The MBR execution mode remains
 disabled.
+
+
+## Audited GRUB write-set sizing and zero-content gate (2026-11-20)
+
+The BIOS GRUB guard now receives both the measured core-image size and the
+exact contiguous write-set length from the verified provenance manifest.
+For the currently audited Debian 13 amd64 GRUB build, that interval is
+58,880 bytes starting at byte zero: 115 sectors including the MBR sector.
+The proposed backup range is therefore exactly LBA 0–114, not the entire
+geometric gap. The embedding requirement is the larger of the core-image
+requirement and the 114 post-MBR sectors consumed by the audited write-set.
+
+The read-only MBR plan now scans every byte from LBA 1 through LBA 114 before
+it can pass. Any non-zero byte is treated as existing user/boot-manager data
+and returns `install.manual.mbr.grubGapOccupied`; unreadable data fails closed.
+The MBR sector itself is excluded from this zero test because its partition
+table and disk signature are valid data and are separately covered by the
+full write-set backup. Tests cover zero gaps, sentinels at the first and last
+embedding sectors, writable-descriptor rejection, and the integrated plan
+refusal for a non-zero gap.
+
+This is still a preflight-only safeguard. It does not authorize writes, prove
+the exact GRUB package manifest was loaded by `install-run`, or establish
+byte-exact rollback on a real device. The manifest value must be authenticated
+against the actual shipped GRUB artifacts by the privileged executor; the
+manual-MBR execution gate remains closed.
