@@ -117,6 +117,9 @@ static int spec_valid(const DiskSnapshot *d, const MgbSpec *s, uint64_t *data_si
         previous_end = r->offset + r->length;
         total += r->length;
     }
+    /* The backup payload starts after its fixed header; keep every backup-file
+     * pread/pwrite offset representable by signed off_t as well. */
+    if (total > (uint64_t)INT64_MAX - MGB_BACKUP_HEADER_SIZE) return 0;
     *data_size = total;
     return 1;
 }
