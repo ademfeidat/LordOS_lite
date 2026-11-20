@@ -32,9 +32,6 @@ on:
       - "server/src/install/mbr_grub_backup.c"
       - "server/src/install/mbr_grub_backup.h"
       - "server/tests/mbr_grub_backup_test.c"
-      - "server/src/install/mbr_grub_backup.c"
-      - "server/src/install/mbr_grub_backup.h"
-      - "server/tests/mbr_grub_backup_test.c"
       - "server/tests/mbr_busy_test.c"
       - "server/src/install/mbr_grub_gap.c"
       - "server/src/install/mbr_grub_gap.h"
@@ -42,12 +39,6 @@ on:
       - "server/src/install/mbr_grub_guard.c"
       - "server/src/install/mbr_grub_guard.h"
       - "server/tests/mbr_grub_guard_test.c"
-      - "server/src/install/mbr_grub_backup.c"
-      - "server/src/install/mbr_grub_backup.h"
-      - "server/tests/mbr_grub_backup_test.c"
-      - "server/src/install/mbr_grub_backup.c"
-      - "server/src/install/mbr_grub_backup.h"
-      - "server/tests/mbr_grub_backup_test.c"
   pull_request:
     paths:
       - "apps/installer/mbrmanualmodel.js"
