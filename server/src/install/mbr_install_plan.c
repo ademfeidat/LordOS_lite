@@ -91,6 +91,21 @@ const char *mbr_install_plan_build_block_fd(
                                      selection,fstype,preserved_home_uuid,
                                      grub_core_bytes,replacement_confirmed,out);
     if(why) return why;
+    /* Resolve each selected partition beneath the same parent disk in sysfs,
+     * then compare its /dev node's block major/minor to that exact child. */
+    unsigned selected_parts[3]={selection->root_part,selection->home_part,selection->swap_part};
+    for(unsigned i=0;i<3;i++) {
+        if(!selected_parts[i]) continue;
+        int duplicate=0;
+        for(unsigned j=0;j<i;j++) if(selected_parts[j]==selected_parts[i]) duplicate=1;
+        if(duplicate) continue;
+        uint32_t part_major,part_minor;
+        if(mbr_partition_device_check_at("",&observed,selected_parts[i],
+                                         &part_major,&part_minor)!=MDI_OK) {
+            memset(out,0,sizeof *out);
+            return "install.manual.mbr.partitionIdentity";
+        }
+    }
     /* Probe busy state from the just-parsed snapshot and the kernel name derived
      * from the same verified block descriptor. Missing proc/sys facts fail closed. */
     if(mbr_snapshot_busy_at("",observed.kernel_name,&out->disk)) {
