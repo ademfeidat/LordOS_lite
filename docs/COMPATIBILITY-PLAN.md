@@ -470,3 +470,31 @@ Reviewing a selected busy disk or partition returns the explicit
 `install.manual.mbr.busy` error and never produces a backend-ready plan.
 This is only a UI-side guard; the server remains authoritative and the
 `manual-mbr` execution mode remains disabled.
+
+
+## MBR GRUB backup/restore implementation milestone (2026-11-20)
+
+Added `server/src/install/mbr_grub_backup.c/.h`, a fail-closed backup object
+for the exact byte ranges supplied by a caller. The format records disk identity
+(device/inode or block-device identity), disk geometry, a SHA-256 digest of the
+validated disk snapshot, GRUB version and executable/module hashes, byte-range
+offsets and lengths, and a SHA-256 integrity digest over the backup header and
+payload. Backup creation requires a read-only disk descriptor, exclusive
+no-follow file creation, mode 0600, file and directory fsync, and a read-back
+verification. Restore requires a read-write descriptor, verifies the backup
+against the same open disk identity and snapshot, writes only the recorded
+ranges, fsyncs, then reads every restored byte back for exact comparison.
+
+A regular-file image test now covers backup creation without modifying the
+image, mode/regular-file checks, symlink rejection, duplicate backup refusal,
+wrong-disk refusal, overlapping-range rejection, simulated GRUB overwrite,
+byte-exact restoration, refusal to restore through a read-only descriptor,
+and backup-payload tampering detection. The module is included in the server
+build and the focused MBR GitHub Actions workflow.
+
+**Validation state:** CI result for this new test is pending. The module is
+not connected to `install-run`, does not authorize GRUB writes, and has not
+been accepted for real block devices. Fault injection at every write/fsync
+boundary, process interruption, power-loss recovery, GRUB-version pinning,
+and BIOS VM boot/rollback tests remain blocking gates. No real disk is used
+by the new unit test.
