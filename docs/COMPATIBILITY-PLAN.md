@@ -850,3 +850,21 @@ real-block-device fixture; disposable VM/loop-device tests are still required
 to prove the sysfs and ioctl path against actual whole disks and partition
 nodes. This helper is not yet called by `install-run` or the MBR plan builder,
 so it does not establish production device identity by itself.
+
+
+### Identity-gated production planning wrapper
+
+The dry-run orchestration now also exposes
+`mbr_install_plan_build_block_fd()`. Unlike the regular-file image helper used
+by unit tests, this production-facing wrapper first checks the already-open
+descriptor against the selected whole-disk major/minor, byte capacity and
+logical sector size, and derives the geometry passed to the one-pass MBR
+planner from the block-device ioctls rather than caller-supplied geometry.
+A regression test confirms that a regular-file image cannot enter this
+production-facing wrapper. The existing dry-run API remains available for
+synthetic images only.
+
+This is still not an `install-run` integration: the privileged executor must
+call the block-device wrapper, independently refresh fail-closed busy/holder
+facts, and verify each selected partition node's major/minor before any
+filesystem or mount operation. The MBR execution mode remains disabled.
