@@ -544,3 +544,14 @@ the geometry threshold; the conventional LBA 2048 start also passes; the
 legacy LBA 63 start has only 62 candidate sectors and is rejected. This
 validates only capacity, not that those sectors are safe to overwrite. The
 actual install path remains disabled.
+
+## MBR UI model arithmetic hardening (2026-11-20)
+
+The isolated manual-MBR UI model now rejects a partition candidate when
+computing its byte size would exceed JavaScript's safe-integer range. Start and
+end LBAs can each be represented as safe integers while their sector-count
+difference multiplied by the logical sector size is no longer exact; accepting
+such a candidate could produce an imprecise size in the selection UI. A
+regression case uses a maximum safe end-LBA to verify that this malformed
+candidate is not offered. This is a presentation/model validation only; the
+backend remains authoritative and manual-MBR installation remains disabled.
