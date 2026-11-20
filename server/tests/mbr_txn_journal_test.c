@@ -35,6 +35,8 @@ static void fill_record(MjtJournalRecord *r) {
     strcpy(r->backup_name,"grub.backup");
     r->root_part=2; r->root_major=8; r->root_minor=2;
     memset(r->backup_sha256,'c',64); r->backup_sha256[64]=0;
+    r->grub_write_set_bytes=58880;
+    memset(r->grub_manifest_sha256,'d',64); r->grub_manifest_sha256[64]=0;
 }
 int main(void) {
     char tmp[]="/tmp/lordos-mbr-journal-XXXXXX";
@@ -71,6 +73,8 @@ int main(void) {
     CHECK(got.st_rdev==r.st_rdev && !strcmp(got.snapshot_sha256,r.snapshot_sha256));
     CHECK(got.root_part==2 && got.root_major==8 && got.root_minor==2);
     CHECK(!strcmp(got.backup_sha256,r.backup_sha256));
+    CHECK(got.grub_write_set_bytes==58880);
+    CHECK(!strcmp(got.grub_manifest_sha256,r.grub_manifest_sha256));
     MjtJournalRecord bad_target=r;
     bad_target.root_part=0;
     CHECK(mjtj_write_at(dfd,&lock,"invalid-target.txn",&bad_target,0)==MJTJ_INVALID);
@@ -95,6 +99,14 @@ int main(void) {
     stale=r;
     stale.plan.sequence=5;
     stale.backup_sha256[0]='d'; /* backup artifact identity is immutable */
+    CHECK(mjtj_write_at(dfd,&lock,"install.txn",&stale,4)==MJTJ_STALE);
+    stale=r;
+    stale.plan.sequence=5;
+    stale.grub_write_set_bytes=59392; /* audited write range is immutable */
+    CHECK(mjtj_write_at(dfd,&lock,"install.txn",&stale,4)==MJTJ_STALE);
+    stale=r;
+    stale.plan.sequence=5;
+    stale.grub_manifest_sha256[0]='e'; /* GRUB provenance cannot change mid-transaction */
     CHECK(mjtj_write_at(dfd,&lock,"install.txn",&stale,4)==MJTJ_STALE);
     stale=r;
     stale.plan.sequence=5;
