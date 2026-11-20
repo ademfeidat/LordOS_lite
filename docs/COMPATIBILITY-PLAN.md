@@ -519,3 +519,13 @@ This remains geometry validation only: it does not prove the gap is unused,
 identify GRUB's complete write set, or authorize writes. The update has been
 committed, but no CI result has yet been observed for this commit. MBR
 installation remains disabled in `install-run`.
+
+
+## MBR selection validator: extended-container boundary (2026-11-20)
+
+The independent manual-MBR selection validator now rejects a forged or
+corrupted snapshot whose extended-partition container begins at LBA 0, which
+is reserved for the MBR sector, or whose end lies outside the disk. The
+regression test covers both a zero start and an out-of-disk start. The
+validator remains read-only and the `manual-mbr` install-run gate remains
+closed; this is not an installation-readiness claim.
