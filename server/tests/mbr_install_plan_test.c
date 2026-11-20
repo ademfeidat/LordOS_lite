@@ -37,7 +37,7 @@ int main(void) {
     T(plan.grub.writes_authorized==0 && plan.writes_authorized==0);
     MbrDeviceIdentity expected_disk={.major_number=8,.minor_number=0,.disk_sectors=sectors,.logical_sector_size=512,.kernel_name="sda"};
     T(!strcmp(mbr_install_plan_build_block_fd(fd,&expected_disk,tag,1,
-                                               &selection,fs,NULL,58880,58880,58880,1,&plan),
+                                               &selection,fs,NULL,58880,58880,1,&plan),
               "install.manual.mbr.deviceIdentity"));
 
     selection.home_part=2;
@@ -70,7 +70,7 @@ int main(void) {
     T(!strcmp(mbr_install_plan_build_fd(fd,sectors,512,tag,1,1,&selection,fs,NULL,
                                         58880,58880,1,&plan),"install.manual.mbr.busy"));
     T(!strcmp(mbr_install_plan_build_fd(fd,sectors,512,"0000000000000000-25165824",1,0,
-                                        &selection,fs,NULL,58880,58880,58880,1,&plan),
+                                        &selection,fs,NULL,58880,58880,1,&plan),
              "install.manual.mbr.diskChanged"));
     T(mbr_install_plan_build_fd(fd,sectors,4096,tag,1,0,&selection,fs,NULL,
                                 58880,58880,1,&plan)!=NULL);
