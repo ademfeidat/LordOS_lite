@@ -20,7 +20,7 @@ export function mbrPartitions(disk) {
     .filter((p) => p.busy !== true && num(p.num) && Number.isSafeInteger(p.start) && Number.isSafeInteger(p.end) &&
       p.start >= 1 && p.end >= p.start && Number.isSafeInteger(bytes(disk, p)) &&
       (p.type === 0x83 || p.type === 0x82))
-    .map((p) => ({ ...p, fs: fsByNum.get(p.num) || '', bytes: bytes(disk, p) }))
+    .map((p) => ({ ...p, fs: p.fs || fsByNum.get(p.num) || '', bytes: bytes(disk, p) }))
     .sort((a, b) => a.start - b.start);
 }
 
