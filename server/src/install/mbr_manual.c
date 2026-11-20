@@ -24,7 +24,7 @@ static int snapshot_valid(const DiskSnapshot *d) {
     for (unsigned i = 0; i < d->partition_count; i++) {
         const DsPartition *p = &d->partitions[i];
         if (!p->number || p->number > DS_MAX_PARTITIONS ||
-            p->first_lba > p->last_lba || p->last_lba >= d->total_sectors ||
+            p->first_lba < 1 || p->first_lba > p->last_lba || p->last_lba >= d->total_sectors ||
             p->is_esp || p->is_logical > 1 ||
             (p->is_logical ? p->number < 5 : p->number > 4))
             return 0;
