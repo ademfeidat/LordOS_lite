@@ -499,3 +499,23 @@ been accepted for real block devices. Fault injection at every write/fsync
 boundary, process interruption, power-loss recovery, GRUB-version pinning,
 and BIOS VM boot/rollback tests remain blocking gates. No real disk is used
 by the new unit test.
+
+
+## GRUB gap snapshot validation hardening (2026-11-20)
+
+The read-only BIOS GRUB gap calculator now validates its complete
+`DiskSnapshot` input before calculating candidate embedding space. In
+addition to sector-size and disk-bound checks, it rejects invalid primary
+versus logical partition numbering, duplicate partition numbers, overlapping
+partition extents, logical partitions outside the extended container, primary
+partitions overlapping that container, and inconsistent extended-container
+metadata. A first partition at LBA 1 is treated as a malformed snapshot, not
+as a valid layout with zero embedding space.
+
+The focused test now includes malformed-layout cases as well as 1 MiB-aligned
+and legacy 63-sector starts, and verifies that the extended-container start
+limits the gap even when the first logical partition is farther into the disk.
+This remains geometry validation only: it does not prove the gap is unused,
+identify GRUB's complete write set, or authorize writes. The update has been
+committed, but no CI result has yet been observed for this commit. MBR
+installation remains disabled in `install-run`.
