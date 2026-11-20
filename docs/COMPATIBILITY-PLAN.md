@@ -832,3 +832,21 @@ before its corresponding operation. Startup recovery must revalidate the
 device identity and current MBR/EBR fingerprint, classify the last durable
 state, and make cleanup/restore idempotent. The journal does not make
 filesystem formatting reversible, and it does not authorize disk writes.
+
+
+## Whole-disk block-device identity probe (2026-11-20)
+
+Added `mbr_device_identity.c/.h` as a read-only production preflight primitive.
+It accepts only an already-open read-only block-device descriptor, requires
+sysfs evidence that the major/minor device exists and is not a partition node,
+then reads `BLKGETSIZE64` and `BLKSSZGET`. It rejects non-512-byte logical
+sectors because the current MBR/EBR parser reads 512-byte sectors. The observed
+major/minor, disk sector count and sector size must all match the discovery
+identity. Missing sysfs evidence fails closed.
+
+The regular CI test verifies exact-field comparison and rejects writable
+descriptors, regular files and character devices. It does not have a positive
+real-block-device fixture; disposable VM/loop-device tests are still required
+to prove the sysfs and ioctl path against actual whole disks and partition
+nodes. This helper is not yet called by `install-run` or the MBR plan builder,
+so it does not establish production device identity by itself.
