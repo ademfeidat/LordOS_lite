@@ -295,3 +295,26 @@ This closes only the journal's ability to preserve the identity of the audited
 artifact set. It does **not** implement the privileged runtime manifest
 verifier, establish that the installer is executing the matching GRUB
 binaries, or authorize a disk write. The MBR path remains disabled.
+
+
+## Runtime provenance recheck (experimental; not connected to install-run)
+
+The packaging checker now has two explicit modes:
+
+- Default mode writes the canonical `/usr/share/lordos/grub-mbr-write-set.txt`
+  manifest after checking the exact Debian 13 package versions, executable
+  hashes, and complete `i386-pc` module-set digest.
+- `--verify` recomputes those artifact measurements and compares the complete
+  expected manifest byte-for-byte with the existing file. It rejects a missing
+  file, a symlink, ownership/mode other than root:0644, or any content mismatch.
+  Verification does not replace or rewrite the manifest.
+
+The disposable-image workflow now exercises successful verification, rejects a
+deliberately tampered manifest, restores the fixture, and verifies it again.
+This is a first runtime-verification building block, not yet the privileged
+installer integration: `install-run` does not invoke `--verify`, the manifest
+digest/write-set values are not yet sourced from this verifier in the MBR
+transaction, and `manual-mbr` remains explicitly rejected. The next step is to
+invoke this fixed verifier from the privileged MBR path after copying the
+system and immediately before any GRUB operation, then bind its verified
+write-set length and manifest digest into the durable transaction record.
