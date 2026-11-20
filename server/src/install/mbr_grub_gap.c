@@ -1,3 +1,4 @@
+#define _POSIX_C_SOURCE 200809L
 /* mbr_grub_gap.c — potential post-MBR embedding space; geometry only. */
 #include "mbr_grub_gap.h"
 
