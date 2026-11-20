@@ -53,6 +53,20 @@ jobs:
                 exit 1
               fi
               cp /tmp/grub-mbr-write-set.good /usr/share/lordos/grub-mbr-write-set.txt
+              chmod 0640 /usr/share/lordos/grub-mbr-write-set.txt
+              if sh /workspace/tools/iso/check-grub-mbr-write-set.sh --verify; then
+                echo "manifest with unsafe mode was accepted" >&2
+                exit 1
+              fi
+              chmod 0644 /usr/share/lordos/grub-mbr-write-set.txt
+              mv /usr/share/lordos/grub-mbr-write-set.txt /tmp/grub-mbr-write-set.regular
+              ln -s /tmp/grub-mbr-write-set.regular /usr/share/lordos/grub-mbr-write-set.txt
+              if sh /workspace/tools/iso/check-grub-mbr-write-set.sh --verify; then
+                echo "manifest symlink was accepted" >&2
+                exit 1
+              fi
+              rm /usr/share/lordos/grub-mbr-write-set.txt
+              mv /tmp/grub-mbr-write-set.regular /usr/share/lordos/grub-mbr-write-set.txt
               sh /workspace/tools/iso/check-grub-mbr-write-set.sh --verify
               bash /workspace/tools/installer/audit-grub-mbr-writeset.sh /out
             '
