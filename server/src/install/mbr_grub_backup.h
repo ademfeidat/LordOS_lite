@@ -50,6 +50,10 @@ MgbResult mgb_backup_fd(int disk_fd, int dir_fd, const char *name,
 MgbResult mgb_verify_backup_fd(int disk_fd, int dir_fd, const char *name,
                                const DiskSnapshot *snapshot, const MgbSpec *spec);
 
+/* SHA-256 of the complete immutable backup file, including header and payload.
+ * Requires a private 0600 regular file owned by the effective installer user. */
+MgbResult mgb_backup_digest_at(int dir_fd, const char *name, char out_hex[65]);
+
 /* Restores every recorded range, fsyncs the disk, then verifies every byte by
  * reading it back. It preserves the backup on every error. It is intended only
  * for immediate rollback in the same installer process with the same open disk
