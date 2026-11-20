@@ -4,19 +4,8 @@
 #ifndef LORD_MBR_INSTALL_PLAN_H
 #define LORD_MBR_INSTALL_PLAN_H
 
-#include "mbr_preflight.h"
 #include "mbr_mount_plan.h"
 #include "mbr_grub_guard.h"
-
-typedef enum {
-    MIP_OK = 0,
-    MIP_BAD_INPUT = -1,
-    MIP_PROBE_FAILED = -2,
-    MIP_STALE = -3,
-    MIP_SELECTION = -4,
-    MIP_MOUNT_PLAN = -5,
-    MIP_GRUB_GUARD = -6
-} MipResult;
 
 typedef struct {
     DiskSnapshot disk;
@@ -29,15 +18,16 @@ typedef struct {
  * snapshot conversion share one probe result (no second probe/TOCTOU window).
  * busy is a fresh fail-closed fact from the caller. grub_core_bytes must be
  * measured for the exact shipped GRUB image. Preserved /home requires its
- * detected filesystem and UUID. A successful result is still dry-run only. */
-MipResult mbr_install_plan_build_fd(int fd, uint64_t disk_sectors,
-                                    unsigned logical_sector_size,
-                                    const char *expected_fingerprint,
-                                    int bios_booted, int disk_busy,
-                                    const MmPlan *selection,
-                                    const char *const fstype[DS_MAX_PARTITIONS + 1],
-                                    const char *preserved_home_uuid,
-                                    uint64_t grub_core_bytes,
-                                    int replacement_confirmed,
-                                    MipPlan *out);
+ * detected filesystem and canonical UUID. Returns NULL on success, otherwise
+ * a localized installer error key. A successful result is still dry-run only. */
+const char *mbr_install_plan_build_fd(int fd, uint64_t disk_sectors,
+                                      unsigned logical_sector_size,
+                                      const char *expected_fingerprint,
+                                      int bios_booted, int disk_busy,
+                                      const MmPlan *selection,
+                                      const char *const fstype[DS_MAX_PARTITIONS + 1],
+                                      const char *preserved_home_uuid,
+                                      uint64_t grub_core_bytes,
+                                      int replacement_confirmed,
+                                      MipPlan *out);
 #endif
