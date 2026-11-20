@@ -6,6 +6,7 @@
 
 #include "mbr_mount_plan.h"
 #include "mbr_grub_guard.h"
+#include "mbr_device_identity.h"
 
 typedef struct {
     DiskSnapshot disk;
@@ -22,6 +23,20 @@ typedef struct {
  * a localized installer error key. A successful result is still dry-run only. */
 const char *mbr_install_plan_build_fd(int fd, uint64_t disk_sectors,
                                       unsigned logical_sector_size,
+                                      const char *expected_fingerprint,
+                                      int bios_booted, int disk_busy,
+                                      const MmPlan *selection,
+                                      const char *const fstype[DS_MAX_PARTITIONS + 1],
+                                      const char *preserved_home_uuid,
+                                      uint64_t grub_core_bytes,
+                                      int replacement_confirmed,
+                                      MipPlan *out);
+
+/* Production-facing wrapper: proves the open fd is the selected whole-disk
+ * read-only block device and derives geometry from BLK ioctls before planning.
+ * The regular-file dry-run API above remains available only for tests. */
+const char *mbr_install_plan_build_block_fd(
+                                      int fd, const MbrDeviceIdentity *expected,
                                       const char *expected_fingerprint,
                                       int bios_booted, int disk_busy,
                                       const MmPlan *selection,
