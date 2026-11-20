@@ -1,3 +1,4 @@
+#define _GNU_SOURCE
 #include "install/mbr_grub_gap.h"
 #include <stdio.h>
 #include <string.h>
