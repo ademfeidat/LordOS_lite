@@ -90,16 +90,19 @@ static void test_failure_boundaries(void) {
     CHECK(mjt_apply(&p, MJT_EV_GRUB_WRITE_BEGIN) == MJT_OK);
     CHECK(mjt_apply(&p, MJT_EV_FAILURE) == MJT_OK);
     CHECK(p.state == MJT_RECOVERY_REQUIRED);
-    CHECK(mjt_recovery_action(&p) == MJT_RECOVER_RESTORE_GRUB);
+    CHECK(mjt_recovery_action(&p) == MJT_RECOVER_CLEANUP_MOUNTS);
     CHECK(mjt_apply(&p, MJT_EV_RESTORE_VERIFIED) == MJT_ORDER); /* mounts must be gone first */
     CHECK(mjt_apply(&p, MJT_EV_HOME_UNMOUNTED) == MJT_OK);
     CHECK(mjt_apply(&p, MJT_EV_ROOT_UNMOUNTED) == MJT_OK);
+    CHECK(mjt_recovery_action(&p) == MJT_RECOVER_RESTORE_GRUB);
     CHECK(mjt_apply(&p, MJT_EV_RESTORE_VERIFIED) == MJT_OK);
     CHECK(p.state == MJT_RESTORED && p.mount_mask == 0);
 }
 static void test_invalid_policy_and_mount_order(void) {
     MjtPlan p; MjtPolicy q = {0,0,0,0};
     CHECK(mjt_init(&p, &q) == MJT_INVALID);
+    q = (MjtPolicy){1,1,0,0};
+    CHECK(mjt_init(&p, &q) == MJT_INVALID); /* cannot format /home and then leave it unmounted */
     q = (MjtPolicy){1,0,0,0};
     CHECK(mjt_init(&p, &q) == MJT_OK);
     advance_to_journal(&p);
@@ -110,6 +113,16 @@ static void test_invalid_policy_and_mount_order(void) {
     CHECK(mjt_apply(&p, MJT_EV_HOME_MOUNTED) == MJT_CONSENT);
     CHECK(mjt_apply(&p, MJT_EV_ROOT_UNMOUNTED) == MJT_OK);
     CHECK(mjt_apply(&p, MJT_EV_GRUB_WRITE_BEGIN) == MJT_ORDER);
+
+    /* A failure with an active mount must enter recovery, not terminal abort. */
+    CHECK(mjt_apply(&p, MJT_EV_ROOT_MOUNTED) == MJT_OK);
+    CHECK(mjt_apply(&p, MJT_EV_FAILURE) == MJT_OK);
+    CHECK(p.state == MJT_RECOVERY_REQUIRED);
+    CHECK(mjt_recovery_action(&p) == MJT_RECOVER_CLEANUP_MOUNTS);
+    CHECK(mjt_apply(&p, MJT_EV_ROOT_UNMOUNTED) == MJT_OK);
+    CHECK(mjt_apply(&p, MJT_EV_CLEANUP_VERIFIED) == MJT_OK);
+    CHECK(p.state == MJT_ABORTED);
+    CHECK(mjt_recovery_action(&p) == MJT_RECOVER_INSPECT_FILESYSTEMS);
 }
 int main(void) {
     test_full_commit();
