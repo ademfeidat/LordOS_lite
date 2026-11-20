@@ -158,7 +158,7 @@ MjtResult mjt_apply(MjtPlan *p, MjtEvent ev) {
 MjtRecoveryAction mjt_recovery_action(const MjtPlan *p) {
     if (!p || p->state == MJT_EMPTY || p->state == MJT_PREFLIGHTED ||
         p->state == MJT_BACKUP_DURABLE || p->state == MJT_COMMITTED ||
-        p->state == MJT_ABORTED || p->state == MJT_RESTORED)
+        p->state == MJT_RESTORED)
         return MJT_RECOVER_NONE;
     if (p->mount_mask) return MJT_RECOVER_CLEANUP_MOUNTS;
     if (p->grub_write_started) return MJT_RECOVER_RESTORE_GRUB;
