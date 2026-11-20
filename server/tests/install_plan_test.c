@@ -11,6 +11,27 @@ static int fails, checks;
 
 int main(void) {
     static Plan p;
+    /* MBR inventory joins filesystem metadata by exact partition name. */
+    {
+        static const char lsblk[] =
+            "NAME=\\"sda\\" TYPE=\\"disk\\" FSTYPE=\\"\\"\\n"
+            "NAME=\\"sda1\\" TYPE=\\"part\\" FSTYPE=\\"ext4\\"\\n"
+            "NAME=\\"sda10\\" TYPE=\\"part\\" FSTYPE=\\"ntfs\\"\\n"
+            "NAME=\\"sdb1\\" TYPE=\\"part\\" FSTYPE=\\"vfat\\"\\n";
+        char fs[32];
+        lsblk_partition_fstype(lsblk, "sda1", fs, sizeof fs);
+        T(!strcmp(fs, "ext4"));
+        lsblk_partition_fstype(lsblk, "sda10", fs, sizeof fs);
+        T(!strcmp(fs, "ntfs"));
+        lsblk_partition_fstype(lsblk, "sdb1", fs, sizeof fs);
+        T(!strcmp(fs, "vfat"));
+        lsblk_partition_fstype(lsblk, "sda", fs, sizeof fs);
+        T(!fs[0]);
+        lsblk_partition_fstype(lsblk, "sda2", fs, sizeof fs);
+        T(!fs[0]);
+        lsblk_partition_fstype(lsblk, "sda1", fs, 1);
+        T(fs[0] == 0);
+    }
     /* the wizard's two plans */
     T(parse_plan("{\"mode\":\"erase\",\"disk\":\"sda\",\"swap\":2048}", &p) == 0 && fsp_mode(p.mode) == 0 && !strcmp(p.disk, "sda") && p.swap == 2048);
     T(parse_plan("{\"mode\":\"free\",\"disk\":\"sda\",\"freeStart\":41943040,\"freeEnd\":209713151}", &p) == 0 && fsp_mode(p.mode) == 1);
