@@ -8,6 +8,7 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <sys/random.h>
+#include <sys/file.h>
 #include <unistd.h>
 
 #define J_VERSION 1u
@@ -165,6 +166,44 @@ static MjtJournalResult read_fd(int fd, MjtJournalRecord *out) {
     if(lseek(fd,0,SEEK_SET)<0 || full_read(fd,b,sizeof b)) return MJTJ_IO;
     return decode(b,out)==0 ? MJTJ_OK : MJTJ_CORRUPT;
 }
+MjtJournalResult mjtj_lock_at(int dir_fd,const char *name,MjtJournalLock *out) {
+    struct stat ds,ls;
+    if(dir_fd<0 || !out || !valid_name(name) || fstat(dir_fd,&ds) || !S_ISDIR(ds.st_mode))
+        return MJTJ_INVALID;
+    out->fd=-1; out->dir_dev=0; out->dir_ino=0; out->held=0;
+    int fd=openat(dir_fd,name,O_RDWR|O_CREAT|O_CLOEXEC|O_NOFOLLOW,0600);
+    if(fd<0) return errno==ELOOP ? MJTJ_CORRUPT : MJTJ_IO;
+    if(fstat(fd,&ls) || !S_ISREG(ls.st_mode) || ls.st_nlink!=1 || fchmod(fd,0600)) {
+        close(fd); return MJTJ_CORRUPT;
+    }
+    int rc;
+    do { rc=flock(fd,LOCK_EX|LOCK_NB); } while(rc<0 && errno==EINTR);
+    if(rc<0) {
+        int e=errno; close(fd);
+        return (e==EWOULDBLOCK || e==EAGAIN) ? MJTJ_BUSY : MJTJ_IO;
+    }
+    out->fd=fd; out->dir_dev=(uint64_t)ds.st_dev; out->dir_ino=(uint64_t)ds.st_ino; out->held=1;
+    return MJTJ_OK;
+}
+void mjtj_unlock(MjtJournalLock *lock) {
+    if(!lock) return;
+    if(lock->fd>=0) {
+        (void)flock(lock->fd,LOCK_UN);
+        (void)close(lock->fd);
+    }
+    lock->fd=-1; lock->dir_dev=0; lock->dir_ino=0; lock->held=0;
+}
+static int lock_valid(int dir_fd,const MjtJournalLock *lock) {
+    struct stat ds,ls;
+    if(!lock || !lock->held || lock->fd<0 || fstat(dir_fd,&ds) ||
+       !S_ISDIR(ds.st_mode) || (uint64_t)ds.st_dev!=lock->dir_dev ||
+       (uint64_t)ds.st_ino!=lock->dir_ino || fstat(lock->fd,&ls) ||
+       !S_ISREG(ls.st_mode) || ls.st_nlink!=1 || (ls.st_mode&0777)!=0600)
+        return 0;
+    int rc;
+    do { rc=flock(lock->fd,LOCK_EX|LOCK_NB); } while(rc<0 && errno==EINTR);
+    return rc==0;
+}
 MjtJournalResult mjtj_read_at(int dir_fd,const char *name,MjtJournalRecord *out) {
     struct stat ds;
     if(dir_fd<0 || !valid_name(name) || !out || fstat(dir_fd,&ds) || !S_ISDIR(ds.st_mode))
@@ -211,11 +250,10 @@ static int one_valid_transition(const MjtPlan *old,const MjtPlan *next) {
     }
     return 0;
 }
-MjtJournalResult mjtj_write_at(int dir_fd,const char *name,
-                               const MjtJournalRecord *r,uint64_t expected) {
-    struct stat ds;
+MjtJournalResult mjtj_write_at(int dir_fd,const MjtJournalLock *lock,
+                               const char *name,const MjtJournalRecord *r,uint64_t expected) {
     if(dir_fd<0 || !valid_name(name) || !record_valid(r) ||
-       expected==UINT64_MAX || fstat(dir_fd,&ds) || !S_ISDIR(ds.st_mode) ||
+       expected==UINT64_MAX || !lock_valid(dir_fd,lock) ||
        (expected != 0 && r->plan.sequence != expected+1)) return MJTJ_INVALID;
     MjtJournalRecord old;
     MjtJournalResult rr=mjtj_read_at(dir_fd,name,&old);
