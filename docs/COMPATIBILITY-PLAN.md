@@ -673,3 +673,90 @@ orchestration layer. There is still no MBR formatting, mounting, fstab write,
 partition-table write, GRUB invocation, rollback integration, or MBR UI
 activation. The explicit `manual-mbr` fail-closed rejection in `install.c`
 remains mandatory.
+
+
+## install-run transaction and rollback audit (2026-11-20)
+
+A focused review of the privileged execution path in `install.c`, `manualpart.c`
+and `freepart.c` establishes several constraints for a future MBR executor.
+
+### What the upstream transaction actually guarantees
+
+- The UI plan is parsed and validated again inside `install-run`; the installer
+  does not treat discovery output or a prior wizard validation as authorization.
+- `mpp_apply()` repeats its GPT probe/tag check immediately before work. When
+  it changes a GPT table, it creates an `sgdisk --backup` file, rechecks the
+  snapshot and in-use state, writes a narrowly constructed argument vector,
+  waits for kernel partition updates, and proves the resulting table against
+  the pre-change snapshot and requested plan.
+- The GPT undo record is not a general filesystem rollback. Once a deleted
+  partition may have been overwritten, the old table is deliberately committed
+  rather than restored, because restoring it would advertise data that no
+  longer exists. Formatting failures cannot restore the old filesystem data.
+- On later failure, `install.c` unmounts the target before invoking the
+  applicable undo handlers. A failed rollback is logged and its backup is
+  retained for diagnosis; the caller must not report that rollback succeeded.
+- Mount cleanup is best-effort in the current helper: it calls `sync()` and
+  attempts detached unmounts in a fixed child-before-parent order. A new MBR
+  transaction must track which mounts actually succeeded and verify teardown,
+  rather than assuming every mount was established or silently treating every
+  unmount error as harmless.
+- The bootloader step is deliberately late. Shared GPT installation writes
+  its EFI files first and creates the firmware entry last, after the operations
+  expected to fail have completed. The BIOS GRUB call in the existing code is
+  in the erase-only branch, not the shared/manual branch.
+
+### MBR-specific transaction requirements
+
+The MBR manual mode must not use `mpp_apply()`, `fp_undo()`, `sgdisk`,
+GPT backup images, EFI mounts, or `efibootmgr`. It must not edit the MBR/EBR
+partition table at all. Its transaction should instead be a separately
+implemented, write-disabled state machine with explicit states and durable
+operation records:
+
+1. Re-open and prove the selected whole-disk block device identity; compare
+   major/minor device numbers and the open descriptor's `st_rdev` to the
+   selected discovery identity. Reject regular files in production.
+2. Re-read the complete MBR/EBR chain from that same descriptor, compare the
+   discovery fingerprint, obtain a fresh fail-closed busy/holder result for
+   the disk and every partition, and verify selected partition device nodes
+   resolve to the expected major/minor identities.
+3. Resolve and hash the exact shipped `i386-pc` GRUB executables, modules and
+   core image. A byte count or gap-size estimate is not proof of the sectors
+   that GRUB will write. The audited write-set must be authoritative.
+4. Verify ownership/content of every target GRUB sector, create and fsync a
+   byte-exact backup of the complete audited write-set, verify it by reading
+   it back, and persist a transaction record before the first mutation.
+5. Revalidate disk identity, MBR/EBR fingerprint and busy state immediately
+   before the first write. No partition-table write is part of this mode.
+6. Format only the explicitly selected root partition; format /home only when
+   the user explicitly selected formatting; initialize only the selected swap
+   partition. Never run wipefs or mkfs against an unselected partition.
+7. Mount root, then optional /home; record each successful mount and unwind
+   only those mounts in reverse order. Generate fstab from verified post-format
+   UUIDs and the verified preserved-/home UUID and filesystem.
+8. Install GRUB to the whole disk using the fixed `grub-install
+   --target=i386-pc <disk>` argument form, with no blocklists. Verify that
+   partition-table and disk-signature bytes remain unchanged and that every
+   write is confined to the audited write-set.
+9. On any failure after a GRUB write begins, attempt byte-exact restoration of
+   the recorded GRUB ranges, fsync and verify every restored byte. Keep the
+   backup and mark recovery required if restoration cannot be proven.
+
+Filesystem formatting is inherently destructive: a GRUB backup cannot restore
+root or /home data after `mkfs` begins. The UI must communicate that exact
+scope and obtain explicit per-partition formatting consent. A failed format
+must stop the transaction and must never be described as a successful rollback
+of user data. A process interruption/power loss recovery protocol is a separate
+requirement; the current GRUB backup API explicitly supports immediate
+same-process rollback only and is not a reboot-time recovery mechanism.
+
+### Current implementation boundary
+
+The above is an audit-derived contract, not an implementation claim. No
+transaction executor, durable journal, mount lifecycle, formatting operation,
+or GRUB invocation has been added for MBR. The `manual-mbr` rejection in
+`install.c` remains in place. Before implementation, the next pure milestone
+is a transaction-state planner and fault-injection model that describes
+preflight, backup verification, mutation boundaries, mount tracking, rollback
+status and interruption recovery without performing device I/O.
