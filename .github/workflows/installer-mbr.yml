@@ -39,6 +39,9 @@ on:
       - "server/src/install/mbr_grub_guard.c"
       - "server/src/install/mbr_grub_guard.h"
       - "server/tests/mbr_grub_guard_test.c"
+      - "server/src/install/mbr_install_plan.c"
+      - "server/src/install/mbr_install_plan.h"
+      - "server/tests/mbr_install_plan_test.c"
   pull_request:
     paths:
       - "apps/installer/mbrmanualmodel.js"
@@ -74,6 +77,9 @@ on:
       - "server/src/install/mbr_grub_guard.c"
       - "server/src/install/mbr_grub_guard.h"
       - "server/tests/mbr_grub_guard_test.c"
+      - "server/src/install/mbr_install_plan.c"
+      - "server/src/install/mbr_install_plan.h"
+      - "server/tests/mbr_install_plan_test.c"
       - "server/src/install/mbr_grub_backup.c"
       - "server/src/install/mbr_grub_backup.h"
       - "server/tests/mbr_grub_backup_test.c"
@@ -136,6 +142,10 @@ jobs:
         run: make -C server SESSIOND=0 build/mbr-grub-backup-test
       - name: Run MBR GRUB backup and rollback tests
         run: server/build/mbr-grub-backup-test
+      - name: Compile single-snapshot MBR install dry-run tests
+        run: make -C server SESSIOND=0 build/mbr-install-plan-test
+      - name: Run single-snapshot MBR install dry-run tests
+        run: server/build/mbr-install-plan-test
       - name: Compile installer plan integration tests
         run: make -C server SESSIOND=0 build/install-plan-test
       - name: Run installer plan integration tests
