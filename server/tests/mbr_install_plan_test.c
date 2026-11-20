@@ -31,59 +31,59 @@ int main(void) {
     MipPlan plan;
     MmPlan selection={.root_part=1,.root_format=1,.home_format=0};
     T(mbr_install_plan_build_fd(fd,sectors,512,tag,1,0,&selection,fs,NULL,
-                                58880,1,&plan)==NULL);
+                                58880,58880,1,&plan)==NULL);
     T(plan.disk.kind==DS_TABLE_MBR);
     T(plan.mounts.action_count==2 && plan.mounts.actions[0].kind==MP_FORMAT_ROOT_EXT4);
     T(plan.grub.writes_authorized==0 && plan.writes_authorized==0);
     MbrDeviceIdentity expected_disk={.major_number=8,.minor_number=0,.disk_sectors=sectors,.logical_sector_size=512,.kernel_name="sda"};
     T(!strcmp(mbr_install_plan_build_block_fd(fd,&expected_disk,tag,1,
-                                               &selection,fs,NULL,58880,58880,1,&plan),
+                                               &selection,fs,NULL,58880,58880,58880,1,&plan),
               "install.manual.mbr.deviceIdentity"));
 
     selection.home_part=2;
     fs[2]="ext4";
     T(!strcmp(mbr_install_plan_build_fd(fd,sectors,512,tag,1,0,&selection,fs,NULL,
-                                        58880,1,&plan),"install.manual.mbr.mountPlan"));
+                                        58880,58880,1,&plan),"install.manual.mbr.mountPlan"));
     T(mbr_install_plan_build_fd(fd,sectors,512,tag,1,0,&selection,fs,
                                 "123e4567-e89b-12d3-a456-426614174000",
-                                58880,1,&plan)==NULL);
+                                58880,58880,1,&plan)==NULL);
     T(plan.mounts.action_count==3 && plan.mounts.actions[2].kind==MP_MOUNT_HOME);
     fs[2]="unknown";
     T(!strcmp(mbr_install_plan_build_fd(fd,sectors,512,tag,1,0,&selection,fs,
                                         "123e4567-e89b-12d3-a456-426614174000",
-                                        58880,1,&plan),"install.manual.mbr.homeUnknownFs"));
+                                        58880,58880,1,&plan),"install.manual.mbr.homeUnknownFs"));
     fs[2]="ext4";
     selection.home_format=1;
     T(mbr_install_plan_build_fd(fd,sectors,512,tag,1,0,&selection,fs,NULL,
-                                58880,1,&plan)==NULL);
+                                58880,58880,1,&plan)==NULL);
     T(plan.mounts.actions[2].kind==MP_FORMAT_HOME_EXT4);
     selection.home_format=0; selection.home_part=0;
 
     selection.swap_part=3;
     T(mbr_install_plan_build_fd(fd,sectors,512,tag,1,0,&selection,fs,NULL,
-                                58880,1,&plan)==NULL);
+                                58880,58880,1,&plan)==NULL);
     T(plan.mounts.actions[2].kind==MP_MKSWAP_PARTITION);
     selection.swap_part=0;
 
     T(!strcmp(mbr_install_plan_build_fd(fd,sectors,512,tag,0,0,&selection,fs,NULL,
-                                        58880,1,&plan),"install.manual.mbr.needBios"));
+                                        58880,58880,1,&plan),"install.manual.mbr.needBios"));
     T(!strcmp(mbr_install_plan_build_fd(fd,sectors,512,tag,1,1,&selection,fs,NULL,
-                                        58880,1,&plan),"install.manual.mbr.busy"));
+                                        58880,58880,1,&plan),"install.manual.mbr.busy"));
     T(!strcmp(mbr_install_plan_build_fd(fd,sectors,512,"0000000000000000-25165824",1,0,
-                                        &selection,fs,NULL,58880,58880,1,&plan),
+                                        &selection,fs,NULL,58880,58880,58880,1,&plan),
              "install.manual.mbr.diskChanged"));
     T(mbr_install_plan_build_fd(fd,sectors,4096,tag,1,0,&selection,fs,NULL,
-                                58880,1,&plan)!=NULL);
+                                58880,58880,1,&plan)!=NULL);
     T(!strcmp(mbr_install_plan_build_fd(fd,sectors,512,tag,1,0,&selection,fs,NULL,
-                                        58880,0,&plan),"install.manual.mbr.confirmBootloader"));
+                                        58880,58880,0,&plan),"install.manual.mbr.confirmBootloader"));
     T(!strcmp(mbr_install_plan_build_fd(fd,sectors,512,tag,1,0,&selection,fs,NULL,
-                                        1024*1024,1,&plan),"install.manual.mbr.noGrubGap"));
+                                        1024*1024,58880,1,&plan),"install.manual.mbr.noGrubGap"));
     selection.root_part=0;
     T(mbr_install_plan_build_fd(fd,sectors,512,tag,1,0,&selection,fs,NULL,
-                                58880,1,&plan)!=NULL);
+                                58880,58880,1,&plan)!=NULL);
     selection.root_part=1;
     T(mbr_install_plan_build_fd(fd,sectors,512,tag,1,0,&selection,fs,NULL,
-                                58880,1,NULL)!=NULL);
+                                58880,58880,1,NULL)!=NULL);
     unsigned char after[512];
     T(pread(fd,after,sizeof after,0)==(ssize_t)sizeof after);
     T(!memcmp(after,mbr,sizeof mbr));
