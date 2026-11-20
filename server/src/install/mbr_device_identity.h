@@ -16,9 +16,10 @@ typedef enum {
     MDI_BAD_ARGUMENT = -1,
     MDI_NOT_READ_ONLY = -2,
     MDI_NOT_BLOCK_DEVICE = -3,
-    MDI_GEOMETRY = -4,
-    MDI_IO = -5,
-    MDI_IDENTITY_MISMATCH = -6
+    MDI_NOT_WHOLE_DISK = -4,
+    MDI_GEOMETRY = -5,
+    MDI_IO = -6,
+    MDI_IDENTITY_MISMATCH = -7
 } MdiResult;
 
 /* Requires an already-open O_RDONLY whole-disk block-device descriptor.
