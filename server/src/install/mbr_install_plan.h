@@ -45,6 +45,7 @@ const char *mbr_install_plan_build_block_fd(
                                       const char *const fstype[DS_MAX_PARTITIONS + 1],
                                       const char *preserved_home_uuid,
                                       uint64_t grub_core_bytes,
+                                      uint64_t grub_write_set_bytes,
                                       int replacement_confirmed,
                                       MipPlan *out);
 #endif
