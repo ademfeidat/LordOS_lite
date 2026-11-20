@@ -34,6 +34,7 @@ static void fill_record(MjtJournalRecord *r) {
     memset(r->transaction_id,'b',32); r->transaction_id[32]=0;
     strcpy(r->backup_name,"grub.backup");
     r->root_part=2; r->root_major=8; r->root_minor=2;
+    memset(r->backup_sha256,'c',64); r->backup_sha256[64]=0;
 }
 int main(void) {
     char tmp[]="/tmp/lordos-mbr-journal-XXXXXX";
@@ -69,6 +70,7 @@ int main(void) {
     CHECK(got.plan.sequence==3 && got.plan.state==MJT_JOURNAL_DURABLE);
     CHECK(got.st_rdev==r.st_rdev && !strcmp(got.snapshot_sha256,r.snapshot_sha256));
     CHECK(got.root_part==2 && got.root_major==8 && got.root_minor==2);
+    CHECK(!strcmp(got.backup_sha256,r.backup_sha256));
     MjtJournalRecord bad_target=r;
     bad_target.root_part=0;
     CHECK(mjtj_write_at(dfd,&lock,"invalid-target.txn",&bad_target,0)==MJTJ_INVALID);
