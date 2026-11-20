@@ -15,7 +15,9 @@ static int snapshot_valid(const DiskSnapshot *d) {
         (d->has_extended != 0 && d->has_extended != 1))
         return 0;
     if (d->has_extended) {
-        if (d->extended_first_lba > d->extended_last_lba ||
+        /* LBA 0 is the MBR itself and cannot belong to a DOS partition. */
+        if (d->extended_first_lba < 1 ||
+            d->extended_first_lba > d->extended_last_lba ||
             d->extended_last_lba >= d->total_sectors) return 0;
     } else if (d->extended_first_lba || d->extended_last_lba) return 0;
 
