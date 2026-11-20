@@ -8,6 +8,7 @@
 #include <linux/fs.h>
 #include <sys/ioctl.h>
 #include <sys/stat.h>
+#include <string.h>
 #include <sys/sysmacros.h>
 #include <unistd.h>
 
@@ -27,6 +28,11 @@ MdiResult mbr_device_identity_probe_fd(int fd, MbrDeviceIdentity *out) {
     if(n<0 || (size_t)n>=sizeof sysfs_path) return MDI_IO;
     struct stat sysfs_st;
     if(stat(sysfs_path,&sysfs_st)) return MDI_IO; /* no sysfs proof: fail closed */
+    char sysfs_target[PATH_MAX];
+    ssize_t target_len=readlink(sysfs_path,sysfs_target,sizeof sysfs_target-1);
+    if(target_len<0 || (size_t)target_len>=sizeof sysfs_target-1) return MDI_IO;
+    sysfs_target[target_len]=0;
+    if(strstr(sysfs_target,"/virtual/block/")) return MDI_NOT_WHOLE_DISK;
     n=snprintf(sysfs_path,sizeof sysfs_path,"/sys/dev/block/%u:%u/partition",maj,min);
     if(n<0 || (size_t)n>=sizeof sysfs_path) return MDI_IO;
     if(!lstat(sysfs_path,&sysfs_st)) return MDI_NOT_WHOLE_DISK;
