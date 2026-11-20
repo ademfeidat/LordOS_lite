@@ -43,6 +43,20 @@ int main(void) {
     CHECK(dfd>=0);
     if(dfd<0) return 1;
 
+    char insecure_path[256];
+    snprintf(insecure_path,sizeof insecure_path,"%s/insecure",dir);
+    CHECK(mkdir(insecure_path,0700)==0);
+    CHECK(chmod(insecure_path,0777)==0);
+    int insecure_fd=open(insecure_path,O_RDONLY|O_DIRECTORY|O_CLOEXEC);
+    CHECK(insecure_fd>=0);
+    if(insecure_fd>=0) {
+        MjtJournalLock rejected={-1,0,0,0};
+        CHECK(mjtj_lock_at(insecure_fd,"should-not-lock",&rejected)==MJTJ_INVALID);
+        close(insecure_fd);
+    }
+    CHECK(chmod(insecure_path,0700)==0);
+    CHECK(rmdir(insecure_path)==0);
+
     MjtJournalLock lock={-1,0,0,0}, contender={-1,0,0,0};
     CHECK(mjtj_lock_at(dfd,"install.txn.lock",&lock)==MJTJ_OK);
     CHECK(mjtj_lock_at(dfd,"install.txn.lock",&contender)==MJTJ_BUSY);
