@@ -1211,3 +1211,11 @@ build/mbr-grub-guard-test: tests/mbr_grub_guard_test.c src/install/mbr_grub_guar
 	@mkdir -p build
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -std=c11 -D_FILE_OFFSET_BITS=64 -o $@ tests/mbr_grub_guard_test.c src/install/mbr_grub_guard.c src/install/mbr_grub_gap.c src/install/mbr_disk.c src/install/mbr.c src/install/disk_snapshot.c
 	./$@ || { rm -f $@; exit 1; }
+
+# Pure MBR transaction state machine. This models ordering and crash decisions only;
+# it performs no disk, mount, format, journal-file or GRUB I/O.
+test: build/mbr-txn-plan-test
+build/mbr-txn-plan-test: tests/mbr_txn_plan_test.c src/install/mbr_txn_plan.c src/install/mbr_txn_plan.h
+	@mkdir -p build
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -std=c11 -Werror -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer -o $@ tests/mbr_txn_plan_test.c src/install/mbr_txn_plan.c
+	./$@ || { rm -f $@; exit 1; }
