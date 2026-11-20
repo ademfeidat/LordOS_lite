@@ -2,6 +2,10 @@
 #include "mbr_grub_gap.h"
 
 #include <limits.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <sys/stat.h>
+#include <unistd.h>
 
 static int overlaps(uint64_t a, uint64_t b, uint64_t c, uint64_t d) {
     return a <= d && c <= b;
@@ -70,4 +74,39 @@ MggResult mbr_grub_gap_check(const DiskSnapshot *d, uint64_t required_bytes,
     if (available_sectors) *available_sectors = available;
     if (required_sectors) *required_sectors = required;
     return required <= available ? MGG_OK : MGG_TOO_SMALL;
+}
+
+MgcResult mbr_grub_gap_contents_check_fd(int fd,uint64_t disk_sectors,
+                                         uint64_t write_set_bytes,
+                                         uint64_t *first_nonzero_lba) {
+    if(first_nonzero_lba) *first_nonzero_lba=0;
+    if(fd<0 || !disk_sectors || !write_set_bytes ||
+       write_set_bytes>UINT64_MAX-511 || disk_sectors>UINT64_MAX/512 ||
+       disk_sectors*512>(uint64_t)INT64_MAX) return MGC_BAD_INPUT;
+    int flags=fcntl(fd,F_GETFL);
+    if(flags<0) return MGC_IO;
+    if((flags&O_ACCMODE)!=O_RDONLY) return MGC_BAD_INPUT;
+    struct stat st;
+    if(fstat(fd,&st)) return MGC_IO;
+    if(!S_ISBLK(st.st_mode) && !S_ISREG(st.st_mode)) return MGC_BAD_INPUT;
+    if(S_ISREG(st.st_mode) && (st.st_size<0 || (uint64_t)st.st_size<disk_sectors*512))
+        return MGC_BAD_INPUT;
+    uint64_t sectors=(write_set_bytes+511)/512;
+    if(sectors<2 || sectors>disk_sectors) return MGC_BAD_INPUT;
+    uint64_t remaining=(sectors-1)*512;
+    uint64_t offset=512;
+    uint8_t buf[4096];
+    while(remaining) {
+        size_t want=remaining>sizeof buf ? sizeof buf : (size_t)remaining;
+        ssize_t got=pread(fd,buf,want,(off_t)offset);
+        if(got<0 && errno==EINTR) continue;
+        if(got<=0) return MGC_IO;
+        for(ssize_t i=0;i<got;i++) if(buf[i]) {
+            if(first_nonzero_lba) *first_nonzero_lba=(offset+(uint64_t)i)/512;
+            return MGC_OCCUPIED;
+        }
+        offset+=(uint64_t)got;
+        remaining-=(uint64_t)got;
+    }
+    return MGC_OK;
 }
