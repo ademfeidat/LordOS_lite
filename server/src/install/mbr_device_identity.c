@@ -1,5 +1,4 @@
 /* mbr_device_identity.c — read-only whole-disk block-device identity check. */
-#define _GNU_SOURCE
 #include "mbr_device_identity.h"
 
 #include <errno.h>
