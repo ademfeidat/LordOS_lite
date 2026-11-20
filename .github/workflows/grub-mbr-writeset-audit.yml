@@ -4,16 +4,16 @@ on:
     branches: [compatibility/legacy-bios-mbr]
     paths:
       - "tools/iso/check-grub-mbr-write-set.sh"
+      - "tools/iso/build.sh"
       - "tools/installer/audit-grub-mbr-writeset.sh"
       - "tools/installer/parse-grub-write-trace.py"
-      - "tools/iso/build.sh"
-      - "tools/iso/check-grub-mbr-write-set.sh"
       - "tests/installer_grub_trace_parser_test.py"
       - ".github/workflows/grub-mbr-writeset-audit.yml"
   pull_request:
     branches: [compatibility/legacy-bios-mbr]
     paths:
       - "tools/iso/check-grub-mbr-write-set.sh"
+      - "tools/iso/build.sh"
       - "tools/installer/audit-grub-mbr-writeset.sh"
       - "tools/installer/parse-grub-write-trace.py"
       - "tests/installer_grub_trace_parser_test.py"
@@ -29,6 +29,10 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
+      - name: Check POSIX shell syntax
+        run: |
+          sh -n tools/iso/build.sh
+          sh -n tools/iso/check-grub-mbr-write-set.sh
       - name: Test GRUB trace parser
         run: python3 -m unittest discover -s tests -p 'installer_grub_trace_parser_test.py' -v
       - name: Run audit inside the LordOS Debian 13 build environment
