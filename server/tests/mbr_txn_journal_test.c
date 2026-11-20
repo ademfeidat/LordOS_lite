@@ -1,4 +1,3 @@
-#define _GNU_SOURCE
 #include "../src/install/mbr_txn_journal.h"
 #include <errno.h>
 #include <fcntl.h>
