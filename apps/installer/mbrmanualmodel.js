@@ -18,7 +18,8 @@ export function mbrPartitions(disk) {
   const fsByNum = new Map((disk.parts || []).filter((p) => num(p.num)).map((p) => [p.num, p.fs || p.fstype || '']));
   return disk.mbrParts
     .filter((p) => p.busy !== true && num(p.num) && Number.isSafeInteger(p.start) && Number.isSafeInteger(p.end) &&
-      p.start >= 1 && p.end >= p.start && (p.type === 0x83 || p.type === 0x82))
+      p.start >= 1 && p.end >= p.start && Number.isSafeInteger(bytes(disk, p)) &&
+      (p.type === 0x83 || p.type === 0x82))
     .map((p) => ({ ...p, fs: fsByNum.get(p.num) || '', bytes: bytes(disk, p) }))
     .sort((a, b) => a.start - b.start);
 }
