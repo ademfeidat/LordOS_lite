@@ -12,6 +12,35 @@
 #define DISK_SECTORS 131072u
 #define TEST_RANGE_BYTES 58880u
 
+static int inject_partial_pwrite;
+static int partial_pwrite_calls;
+static int inject_fsync_failure;
+
+extern ssize_t __real_pwrite(int fd, const void *buf, size_t count, off_t offset);
+extern int __real_fsync(int fd);
+
+ssize_t __wrap_pwrite(int fd, const void *buf, size_t count, off_t offset) {
+    if (inject_partial_pwrite) {
+        partial_pwrite_calls++;
+        if (partial_pwrite_calls == 1) {
+            size_t partial = count > 128 ? 128 : count;
+            return __real_pwrite(fd, buf, partial, offset);
+        }
+        errno = EIO;
+        return -1;
+    }
+    return __real_pwrite(fd, buf, count, offset);
+}
+
+int __wrap_fsync(int fd) {
+    if (inject_fsync_failure) {
+        inject_fsync_failure = 0;
+        errno = EIO;
+        return -1;
+    }
+    return __real_fsync(fd);
+}
+
 static int failures;
 #define CHECK(x) do { if (!(x)) { \
     fprintf(stderr, "FAIL %s:%d: %s\n", __FILE__, __LINE__, #x); failures++; \
@@ -113,8 +142,27 @@ int main(void) {
     CHECK(write_pattern(disk_rw, 0x5A, TEST_RANGE_BYTES) == 0);
     CHECK(fsync(disk_rw) == 0);
     CHECK(range_is(disk_rw, 0x5A, TEST_RANGE_BYTES));
+
+    /* A short write followed by I/O failure must be reported, never as success.
+     * The persistent backup remains usable for a complete retry. */
+    inject_partial_pwrite = 1;
+    partial_pwrite_calls = 0;
+    CHECK(mgb_restore_fd(disk_rw, dir_fd, "grub.backup", &snapshot, &spec) == MGB_IO);
+    inject_partial_pwrite = 0;
+    unsigned char partial[256];
+    CHECK(pread(disk_rw, partial, sizeof partial, 0) == (ssize_t)sizeof partial);
+    for (unsigned i = 0; i < 128; i++) CHECK(partial[i] == 0xA5);
+    for (unsigned i = 128; i < sizeof partial; i++) CHECK(partial[i] == 0x5A);
     CHECK(mgb_restore_fd(disk_rw, dir_fd, "grub.backup", &snapshot, &spec) == MGB_OK);
     CHECK(range_is(disk_rw, 0xA5, TEST_RANGE_BYTES));
+
+    /* An fsync failure is also reported; a subsequent verified retry is safe. */
+    CHECK(write_pattern(disk_rw, 0x5A, TEST_RANGE_BYTES) == 0);
+    CHECK(fsync(disk_rw) == 0);
+    inject_fsync_failure = 1;
+    CHECK(mgb_restore_fd(disk_rw, dir_fd, "grub.backup", &snapshot, &spec) == MGB_IO);
+    CHECK(range_is(disk_rw, 0xA5, TEST_RANGE_BYTES));
+    CHECK(mgb_restore_fd(disk_rw, dir_fd, "grub.backup", &snapshot, &spec) == MGB_OK);
 
     /* A read-only descriptor must never be accepted for restoration. */
     CHECK(mgb_restore_fd(disk_ro, dir_fd, "grub.backup", &snapshot, &spec) == MGB_BAD_INPUT);
