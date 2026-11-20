@@ -43,33 +43,36 @@ int main(void) {
     CHECK(dfd>=0);
     if(dfd<0) return 1;
 
+    MjtJournalLock lock={-1,0,0,0}, contender={-1,0,0,0};
+    CHECK(mjtj_lock_at(dfd,"install.txn.lock",&lock)==MJTJ_OK);
+    CHECK(mjtj_lock_at(dfd,"install.txn.lock",&contender)==MJTJ_BUSY);
     MjtJournalRecord r, got;
     fill_record(&r);
     CHECK(r.plan.sequence==3);
-    CHECK(mjtj_write_at(dfd,"install.txn",&r,0)==MJTJ_OK);
+    CHECK(mjtj_write_at(dfd,&lock,"install.txn",&r,0)==MJTJ_OK);
     CHECK(mjtj_read_at(dfd,"install.txn",&got)==MJTJ_OK);
     CHECK(got.plan.sequence==3 && got.plan.state==MJT_JOURNAL_DURABLE);
     CHECK(got.st_rdev==r.st_rdev && !strcmp(got.snapshot_sha256,r.snapshot_sha256));
-    CHECK(mjtj_write_at(dfd,"install.txn",&r,0)==MJTJ_EXISTS);
+    CHECK(mjtj_write_at(dfd,&lock,"install.txn",&r,0)==MJTJ_EXISTS);
 
     CHECK(mjt_apply(&r.plan,MJT_EV_ROOT_FORMAT_BEGIN)==MJT_OK);
     CHECK(r.plan.sequence==4);
-    CHECK(mjtj_write_at(dfd,"install.txn",&r,3)==MJTJ_OK);
+    CHECK(mjtj_write_at(dfd,&lock,"install.txn",&r,3)==MJTJ_OK);
     CHECK(mjtj_read_at(dfd,"install.txn",&got)==MJTJ_OK);
     CHECK(got.plan.sequence==4 && got.plan.root_format_started);
 
     MjtJournalRecord stale=r;
     stale.plan.sequence=5;
     stale.st_rdev++;
-    CHECK(mjtj_write_at(dfd,"install.txn",&stale,4)==MJTJ_STALE);
+    CHECK(mjtj_write_at(dfd,&lock,"install.txn",&stale,4)==MJTJ_STALE);
     stale=r;
     stale.plan.sequence=5;
     stale.plan.state=MJT_COMMITTED; /* not reachable from FORMAT_ROOT_BEGIN */
-    CHECK(mjtj_write_at(dfd,"install.txn",&stale,4)==MJTJ_STALE);
+    CHECK(mjtj_write_at(dfd,&lock,"install.txn",&stale,4)==MJTJ_STALE);
     stale=r;
     stale.plan.sequence=5;
     stale.plan.policy.format_home=1; stale.plan.policy.mount_home=1; /* consent policy is immutable for a transaction */
-    CHECK(mjtj_write_at(dfd,"install.txn",&stale,4)==MJTJ_STALE);
+    CHECK(mjtj_write_at(dfd,&lock,"install.txn",&stale,4)==MJTJ_STALE);
     CHECK(mjtj_read_at(dfd,"install.txn",&got)==MJTJ_OK && got.plan.sequence==4);
 
     CHECK(symlinkat("install.txn",dfd,"journal-link")==0);
@@ -89,19 +92,23 @@ int main(void) {
     /* Failure syncing the temporary file: no final journal may appear. */
     fill_record(&r);
     fsync_calls=0; fail_fsync_at=1;
-    CHECK(mjtj_write_at(dfd,"file-sync.txn",&r,0)==MJTJ_IO);
+    CHECK(mjtj_write_at(dfd,&lock,"file-sync.txn",&r,0)==MJTJ_IO);
     fail_fsync_at=0;
     CHECK(faccessat(dfd,"file-sync.txn",F_OK,0)!=0);
 
     /* Failure syncing the containing directory is explicitly uncertain. The
      * operation being journaled must not run, even if the file is readable. */
     fsync_calls=0; fail_fsync_at=2;
-    CHECK(mjtj_write_at(dfd,"dir-sync.txn",&r,0)==MJTJ_UNCERTAIN);
+    CHECK(mjtj_write_at(dfd,&lock,"dir-sync.txn",&r,0)==MJTJ_UNCERTAIN);
     fail_fsync_at=0;
     CHECK(mjtj_read_at(dfd,"dir-sync.txn",&got)==MJTJ_OK);
     CHECK(got.plan.sequence==3);
 
     unlinkat(dfd,"dir-sync.txn",0);
+    mjtj_unlock(&lock);
+    CHECK(mjtj_lock_at(dfd,"install.txn.lock",&contender)==MJTJ_OK);
+    mjtj_unlock(&contender);
+    unlinkat(dfd,"install.txn.lock",0);
     close(dfd);
     rmdir(dir);
     if(failures) { fprintf(stderr,"%d MBR journal test(s) failed\n",failures); return 1; }
