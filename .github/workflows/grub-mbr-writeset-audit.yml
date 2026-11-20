@@ -46,6 +46,14 @@ jobs:
               apt-get install -y grub-common grub2-common grub-pc-bin strace fdisk util-linux e2fsprogs python3
               sh /workspace/tools/iso/check-grub-mbr-write-set.sh
               sh /workspace/tools/iso/check-grub-mbr-write-set.sh --verify
+              cp /usr/share/lordos/grub-mbr-write-set.txt /tmp/grub-mbr-write-set.good
+              printf 'tampered=1\n' >> /usr/share/lordos/grub-mbr-write-set.txt
+              if sh /workspace/tools/iso/check-grub-mbr-write-set.sh --verify; then
+                echo "tampered GRUB provenance manifest was accepted" >&2
+                exit 1
+              fi
+              cp /tmp/grub-mbr-write-set.good /usr/share/lordos/grub-mbr-write-set.txt
+              sh /workspace/tools/iso/check-grub-mbr-write-set.sh --verify
               bash /workspace/tools/installer/audit-grub-mbr-writeset.sh /out
             '
       - name: Upload write-set evidence
