@@ -39,6 +39,8 @@
 #define J_SWAP_MAJOR_OFF 248
 #define J_SWAP_MINOR_OFF 252
 #define J_BACKUP_SHA_OFF 256
+#define J_GRUB_WRITE_BYTES_OFF 320
+#define J_GRUB_MANIFEST_SHA_OFF 328
 #define J_DIGEST_OFF 480
 
 static const uint8_t journal_magic[8] = {'L','M','B','R','T','X','N','1'};
@@ -126,6 +128,10 @@ static int record_valid(const MjtJournalRecord *r) {
          r->logical_sector_size==2048 || r->logical_sector_size==4096) &&
         valid_hex(r->snapshot_sha256,64) && valid_hex(r->transaction_id,32) &&
         valid_hex(r->backup_sha256,64) &&
+        r->grub_write_set_bytes >= 512 &&
+        r->grub_write_set_bytes <= 1024u*1024u &&
+        (r->grub_write_set_bytes % r->logical_sector_size) == 0 &&
+        valid_hex(r->grub_manifest_sha256,64) &&
         strnlen(r->backup_name,MJTJ_NAME_MAX+1)>0 &&
         strnlen(r->backup_name,MJTJ_NAME_MAX+1)<=MJTJ_NAME_MAX &&
         valid_name(r->backup_name) && targets_valid(r);
@@ -163,6 +169,8 @@ static void encode(const MjtJournalRecord *r, uint8_t b[MJTJ_RECORD_SIZE]) {
     put32(b+J_SWAP_MAJOR_OFF,r->swap_major);
     put32(b+J_SWAP_MINOR_OFF,r->swap_minor);
     memcpy(b+J_BACKUP_SHA_OFF,r->backup_sha256,64);
+    put64(b+J_GRUB_WRITE_BYTES_OFF,r->grub_write_set_bytes);
+    memcpy(b+J_GRUB_MANIFEST_SHA_OFF,r->grub_manifest_sha256,64);
     sha256(b,J_DIGEST_OFF,b+J_DIGEST_OFF);
 }
 static int decode(const uint8_t b[MJTJ_RECORD_SIZE], MjtJournalRecord *r) {
@@ -206,6 +214,9 @@ static int decode(const uint8_t b[MJTJ_RECORD_SIZE], MjtJournalRecord *r) {
     r->swap_major=get32(b+J_SWAP_MAJOR_OFF);
     r->swap_minor=get32(b+J_SWAP_MINOR_OFF);
     memcpy(r->backup_sha256,b+J_BACKUP_SHA_OFF,64); r->backup_sha256[64]=0;
+    r->grub_write_set_bytes=get64(b+J_GRUB_WRITE_BYTES_OFF);
+    memcpy(r->grub_manifest_sha256,b+J_GRUB_MANIFEST_SHA_OFF,64);
+    r->grub_manifest_sha256[64]=0;
     return record_valid(r) ? 0 : -1;
 }
 static MjtJournalResult read_fd(int fd, MjtJournalRecord *out) {
@@ -289,7 +300,9 @@ static int same_identity(const MjtJournalRecord *a,const MjtJournalRecord *b) {
         a->root_major==b->root_major && a->root_minor==b->root_minor &&
         a->home_major==b->home_major && a->home_minor==b->home_minor &&
         a->swap_major==b->swap_major && a->swap_minor==b->swap_minor &&
-        !strcmp(a->backup_sha256,b->backup_sha256);
+        !strcmp(a->backup_sha256,b->backup_sha256) &&
+        a->grub_write_set_bytes==b->grub_write_set_bytes &&
+        !strcmp(a->grub_manifest_sha256,b->grub_manifest_sha256);
 }
 static int plan_equal(const MjtPlan *a,const MjtPlan *b) {
     return a->state==b->state && a->sequence==b->sequence &&
