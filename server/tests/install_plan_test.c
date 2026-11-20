@@ -14,10 +14,10 @@ int main(void) {
     /* MBR inventory joins filesystem metadata by exact partition name. */
     {
         static const char lsblk[] =
-            "NAME=\\"sda\\" TYPE=\\"disk\\" FSTYPE=\\"\\"\\n"
-            "NAME=\\"sda1\\" TYPE=\\"part\\" FSTYPE=\\"ext4\\"\\n"
-            "NAME=\\"sda10\\" TYPE=\\"part\\" FSTYPE=\\"ntfs\\"\\n"
-            "NAME=\\"sdb1\\" TYPE=\\"part\\" FSTYPE=\\"vfat\\"\\n";
+            "NAME=\"sda\" TYPE=\"disk\" FSTYPE=\"\"\n"
+            "NAME=\"sda1\" TYPE=\"part\" FSTYPE=\"ext4\"\n"
+            "NAME=\"sda10\" TYPE=\"part\" FSTYPE=\"ntfs\"\n"
+            "NAME=\"sdb1\" TYPE=\"part\" FSTYPE=\"vfat\"\n";
         char fs[32];
         lsblk_partition_fstype(lsblk, "sda1", fs, sizeof fs);
         T(!strcmp(fs, "ext4"));
