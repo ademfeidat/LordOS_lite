@@ -1,4 +1,3 @@
-#define _GNU_SOURCE
 #include "install/mbr_install_plan.h"
 #include "install/mbr_disk.h"
 #include <fcntl.h>
