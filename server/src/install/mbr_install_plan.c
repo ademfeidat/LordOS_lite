@@ -67,6 +67,14 @@ const char *mbr_install_plan_build_fd(int fd, uint64_t disk_sectors,
         default: return "install.manual.mbr.badPlan";
     }
 
+    /* GRUB was observed overwriting its complete embedding interval even when
+     * the geometry is large enough. Treat any non-zero pre-existing gap byte as
+     * user data; only an entirely zero interval can pass this read-only gate. */
+    MgcResult gap_contents=mbr_grub_gap_contents_check_fd(
+        fd,plan.disk.total_sectors,grub_write_set_bytes,NULL);
+    if(gap_contents==MGC_OCCUPIED) return "install.manual.mbr.grubGapOccupied";
+    if(gap_contents!=MGC_OK) return "install.manual.mbr.grubGapUnreadable";
+
     /* This orchestration milestone is intentionally incapable of authorizing IO. */
     plan.writes_authorized = 0;
     plan.grub.writes_authorized = 0;
