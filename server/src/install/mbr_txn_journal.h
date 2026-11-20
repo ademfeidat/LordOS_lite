@@ -59,7 +59,8 @@ MjtJournalResult mjtj_read_at(int dir_fd, const char *name,
 /* expected_sequence == 0 creates the initial durable JOURNAL_DURABLE record (sequence 3) without replacing an existing file.
  * Updates require an existing valid record with that sequence and require the
  * new record sequence to be expected_sequence + 1. The transaction identity,
- * disk identity, geometry, fingerprint and backup name cannot change.
+ * disk identity, geometry, fingerprint, selected partition identities and
+ * complete GRUB backup-file SHA-256 cannot change.
  *
  * Writes a temporary file, fsyncs it, atomically links/renames it into place,
  * and fsyncs the directory. MJTJ_UNCERTAIN means the final directory fsync
