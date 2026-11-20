@@ -24,6 +24,7 @@ int main(void) {
     T(p.existing_boot_manager_may_be_replaced==1 && p.writes_authorized==0);
     T(mbr_grub_guard_plan(&d,58880,1049088,1,0,tag,tag,1,&p)==MGG_GUARD_GAP);
     T(mbr_grub_guard_plan(&d,58880,0,1,0,tag,tag,1,&p)==MGG_GUARD_BAD_INPUT);
+    T(mbr_grub_guard_plan(&d,58880,512,1,0,tag,tag,1,&p)==MGG_GUARD_BAD_INPUT);
     T(mbr_grub_guard_plan(&d,1,58880,1,0,NULL,tag,1,&p)==MGG_GUARD_BAD_INPUT);
     printf("%d checks, %d failures\n",checks,failures);
     return failures?1:0;
