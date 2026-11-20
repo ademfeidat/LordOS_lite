@@ -33,6 +33,14 @@ MdiResult mbr_device_identity_probe_fd(int fd, MbrDeviceIdentity *out) {
     if(target_len<0 || (size_t)target_len>=sizeof sysfs_target-1) return MDI_IO;
     sysfs_target[target_len]=0;
     if(strstr(sysfs_target,"/virtual/block/")) return MDI_NOT_WHOLE_DISK;
+    const char *leaf=strrchr(sysfs_target,'/');
+    leaf=leaf ? leaf+1 : sysfs_target;
+    size_t leaf_len=strnlen(leaf,sizeof out->kernel_name);
+    if(!leaf_len || leaf_len>=sizeof out->kernel_name) return MDI_IO;
+    for(size_t i=0;i<leaf_len;i++)
+        if(!((leaf[i]>='a'&&leaf[i]<='z')||(leaf[i]>='A'&&leaf[i]<='Z')||
+             (leaf[i]>='0'&&leaf[i]<='9')||leaf[i]=='_'||leaf[i]=='-'))
+            return MDI_NOT_WHOLE_DISK;
     n=snprintf(sysfs_path,sizeof sysfs_path,"/sys/dev/block/%u:%u/partition",maj,min);
     if(n<0 || (size_t)n>=sizeof sysfs_path) return MDI_IO;
     if(!lstat(sysfs_path,&sysfs_st)) return MDI_NOT_WHOLE_DISK;
@@ -50,13 +58,18 @@ MdiResult mbr_device_identity_probe_fd(int fd, MbrDeviceIdentity *out) {
     out->minor_number=min;
     out->disk_sectors=bytes/512;
     out->logical_sector_size=(uint32_t)logical_sector_size;
+    memcpy(out->kernel_name,leaf,leaf_len);
+    out->kernel_name[leaf_len]=0;
     return MDI_OK;
 }
 int mbr_device_identity_matches(const MbrDeviceIdentity *a,
                                 const MbrDeviceIdentity *b) {
     return a && b && a->major_number==b->major_number &&
         a->minor_number==b->minor_number && a->disk_sectors==b->disk_sectors &&
-        a->logical_sector_size==b->logical_sector_size;
+        a->logical_sector_size==b->logical_sector_size &&
+        strnlen(a->kernel_name,sizeof a->kernel_name)<sizeof a->kernel_name &&
+        strnlen(b->kernel_name,sizeof b->kernel_name)<sizeof b->kernel_name &&
+        a->kernel_name[0] && !strcmp(a->kernel_name,b->kernel_name);
 }
 MdiResult mbr_device_identity_check_fd(int fd,const MbrDeviceIdentity *expected,
                                        MbrDeviceIdentity *out) {
