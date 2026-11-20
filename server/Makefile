@@ -1219,3 +1219,10 @@ build/mbr-txn-plan-test: tests/mbr_txn_plan_test.c src/install/mbr_txn_plan.c sr
 	@mkdir -p build
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -std=c11 -Werror -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer -o $@ tests/mbr_txn_plan_test.c src/install/mbr_txn_plan.c
 	./$@ || { rm -f $@; exit 1; }
+
+# Atomic MBR transaction journal. Tests use regular temporary directories only.
+test: build/mbr-txn-journal-test
+build/mbr-txn-journal-test: tests/mbr_txn_journal_test.c src/install/mbr_txn_journal.c src/install/mbr_txn_journal.h src/install/mbr_txn_plan.c src/install/mbr_txn_plan.h src/pkg/crypto.c src/pkg/crypto.h
+	@mkdir -p build
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -Werror -std=c11 -D_FILE_OFFSET_BITS=64 -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer -o $@ tests/mbr_txn_journal_test.c src/install/mbr_txn_journal.c src/install/mbr_txn_plan.c src/pkg/crypto.c -Wl,--wrap=fsync
+	./$@ || { rm -f $@; exit 1; }
