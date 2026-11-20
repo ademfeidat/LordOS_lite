@@ -255,6 +255,34 @@ static void pair(const char *line, const char *key, char *out, size_t n) {
     }
 }
 
+
+/* Find a partition's filesystem in the same lsblk -P snapshot. Exact NAME and
+ * TYPE matching avoids confusing sda1 with sda10 or a whole-disk row. */
+static void lsblk_partition_fstype(const char *output, const char *partname,
+                                   char *out, size_t cap) {
+    if (!out || !cap) return;
+    out[0] = 0;
+    if (!output || !partname || !*partname) return;
+    for (const char *p = output; *p;) {
+        const char *end = strchr(p, '\n');
+        size_t len = end ? (size_t)(end - p) : strlen(p);
+        if (len < 512) {
+            char line[512], name[64], type[16], fs[32];
+            memcpy(line, p, len);
+            line[len] = 0;
+            pair(line, "NAME", name, sizeof name);
+            pair(line, "TYPE", type, sizeof type);
+            if (!strcmp(type, "part") && !strcmp(name, partname)) {
+                pair(line, "FSTYPE", fs, sizeof fs);
+                cpy(out, cap, fs);
+                return;
+            }
+        }
+        if (!end) break;
+        p = end + 1;
+    }
+}
+
 void install_act_disks(const AdminReq *r, const char *arg, size_t len) {
     (void)r; (void)arg; (void)len;
     if (!is_live()) { admin_err("install.liveOnly", NULL); return; }
@@ -310,14 +338,18 @@ void install_act_disks(const AdminReq *r, const char *arg, size_t len) {
         fprintf(f, ",\"mbrParts\":[");
         if (mbr_probe_ok) for (unsigned q = 0; q < mbr_snapshot.partition_count; q++) {
             const DsPartition *part = &mbr_snapshot.partitions[q];
-            char partdev[48];
+            char partdev[48], partfs[32];
             fsp_part_path(k->name, part->number, partdev, sizeof partdev);
-            fprintf(f, "%s{\"name\":", q ? "," : ""); json_str(f, strrchr(partdev, '/') + 1);
-            fprintf(f, ",\"num\":%u,\"start\":%llu,\"end\":%llu,\"type\":%u,\"logical\":%s,\"busy\":%s}",
+            const char *partname = strrchr(partdev, '/') + 1;
+            lsblk_partition_fstype(out, partname, partfs, sizeof partfs);
+            fprintf(f, "%s{\\"name\\":", q ? "," : ""); json_str(f, partname);
+            fprintf(f, ",\\"num\\":%u,\\"start\\":%llu,\\"end\\":%llu,\\"type\\":%u,\\"logical\\":%s,\\"busy\\":%s,\\"fs\\":",
                     part->number, (unsigned long long)part->first_lba,
                     (unsigned long long)part->last_lba, part->type_code,
                     part->is_logical ? "true" : "false",
                     mbr_partition_busy_at("", k->name, part->number) ? "true" : "false");
+            json_str(f, partfs);
+            fputc('}', f);
         }
         fprintf(f, "]");
         fprintf(f, ",\"esp\":%s,\"espPart\":", mp.fp.esps > 0 ? "true" : "false"); json_str(f, espname);
