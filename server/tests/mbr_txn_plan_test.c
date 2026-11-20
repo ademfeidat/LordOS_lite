@@ -98,6 +98,8 @@ static void test_failure_boundaries(void) {
     CHECK(mjt_recovery_action(&p) == MJT_RECOVER_RESTORE_GRUB);
     CHECK(mjt_apply(&p, MJT_EV_RESTORE_VERIFIED) == MJT_OK);
     CHECK(p.state == MJT_RESTORED && p.mount_mask == 0);
+    /* Restoring GRUB does not restore filesystems changed by mkfs/mkswap. */
+    CHECK(mjt_recovery_action(&p) == MJT_RECOVER_INSPECT_FILESYSTEMS);
 }
 static void test_invalid_policy_and_mount_order(void) {
     MjtPlan p; MjtPolicy q = {0,0,0,0};
