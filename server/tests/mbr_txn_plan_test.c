@@ -91,6 +91,9 @@ static void test_failure_boundaries(void) {
     CHECK(mjt_apply(&p, MJT_EV_FAILURE) == MJT_OK);
     CHECK(p.state == MJT_RECOVERY_REQUIRED);
     CHECK(mjt_recovery_action(&p) == MJT_RECOVER_RESTORE_GRUB);
+    CHECK(mjt_apply(&p, MJT_EV_RESTORE_VERIFIED) == MJT_ORDER); /* mounts must be gone first */
+    CHECK(mjt_apply(&p, MJT_EV_HOME_UNMOUNTED) == MJT_OK);
+    CHECK(mjt_apply(&p, MJT_EV_ROOT_UNMOUNTED) == MJT_OK);
     CHECK(mjt_apply(&p, MJT_EV_RESTORE_VERIFIED) == MJT_OK);
     CHECK(p.state == MJT_RESTORED && p.mount_mask == 0);
 }
