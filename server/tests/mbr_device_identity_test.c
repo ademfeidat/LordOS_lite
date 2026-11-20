@@ -9,7 +9,7 @@ static int failures;
 #define CHECK(x) do { if (!(x)) { fprintf(stderr,"FAIL %s:%d: %s\n",__FILE__,__LINE__,#x); failures++; } } while (0)
 
 int main(void) {
-    MbrDeviceIdentity a={8,0,1000000,512};
+    MbrDeviceIdentity a={.major_number=8,.minor_number=0,.disk_sectors=1000000,.logical_sector_size=512,.kernel_name="sda"};
     MbrDeviceIdentity b=a;
     CHECK(mbr_device_identity_matches(&a,&b));
     b.minor_number++;
@@ -19,6 +19,8 @@ int main(void) {
     b=a; b.disk_sectors++;
     CHECK(!mbr_device_identity_matches(&a,&b));
     b=a; b.logical_sector_size=4096;
+    CHECK(!mbr_device_identity_matches(&a,&b));
+    b=a; strcpy(b.kernel_name,"sdb");
     CHECK(!mbr_device_identity_matches(&a,&b));
     CHECK(!mbr_device_identity_matches(NULL,&a));
 
