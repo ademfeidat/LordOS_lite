@@ -100,6 +100,13 @@ int main(void) {
 
     CHECK(mgb_backup_fd(disk_ro, dir_fd, "grub.backup", &snapshot, &spec) == MGB_OK);
     CHECK(mgb_verify_backup_fd(disk_ro, dir_fd, "grub.backup", &snapshot, &spec) == MGB_OK);
+    CHECK(range_is(disk_rw, 0xA5, TEST_RANGE_BYTES));
+    struct stat backup_st;
+    CHECK(fstatat(dir_fd, "grub.backup", &backup_st, AT_SYMLINK_NOFOLLOW) == 0);
+    CHECK(S_ISREG(backup_st.st_mode) && (backup_st.st_mode & 0777) == 0600);
+    CHECK(symlinkat("grub.backup", dir_fd, "backup-link") == 0);
+    CHECK(mgb_verify_backup_fd(disk_ro, dir_fd, "backup-link", &snapshot, &spec) == MGB_BAD_BACKUP);
+    CHECK(unlinkat(dir_fd, "backup-link", 0) == 0);
     CHECK(mgb_backup_fd(disk_ro, dir_fd, "grub.backup", &snapshot, &spec) == MGB_EXISTS);
 
     /* Simulate a failed GRUB write, then verify exact byte restoration. */
