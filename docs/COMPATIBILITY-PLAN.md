@@ -555,3 +555,25 @@ such a candidate could produce an imprecise size in the selection UI. A
 regression case uses a maximum safe end-LBA to verify that this malformed
 candidate is not offered. This is a presentation/model validation only; the
 backend remains authoritative and manual-MBR installation remains disabled.
+## MBR filesystem metadata in discovery (2026-11-20)
+
+The read-only `install-disks` response now includes an `fs` field on each
+validated `mbrParts` entry. The value is joined from the same `lsblk -P`
+snapshot using an exact partition name and `TYPE=part` match; whole-disk
+rows and similarly prefixed names (for example `sda1` versus `sda10`) are
+not accepted as matches. If the filesystem is unknown or the lsblk row is
+missing/truncated, the field is an empty string rather than an inferred value.
+
+The isolated MBR selection model now prefers this MBR entry's own filesystem
+metadata and retains the older GPT partition-list fallback for compatibility.
+This supplies the server/UI model with the filesystem fact needed to decide
+whether an existing `/home` may be preserved. Tests cover exact-name matching,
+disk-row rejection, missing rows, bounded output, and use of the MBR inventory
+field when the GPT list has no partition-number mapping.
+
+GitHub Actions run 44761950599 completed successfully: the UI model test,
+strict C compilation, sanitizer-backed parser/snapshot/manual/preflight/mount
+plan/busy/GRUB tests, backup/rollback test, and installer-plan integration
+test all passed. This is still discovery metadata only. It does not connect
+`manual-mbr` to `install-run`, and no formatting, mounting, fstab write, or
+GRUB operation is enabled.
