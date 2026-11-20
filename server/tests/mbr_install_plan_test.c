@@ -19,9 +19,9 @@ int main(void) {
     const uint64_t sectors=24ull*1024*1024;
     T(ftruncate(w,(off_t)(sectors*512))==0);
     unsigned char mbr[512]={0};
-    mbr[446+4]=0x83; put32(mbr+446+8,2048); put32(mbr+446+12,20*1024*1024);
-    mbr[462+4]=0x83; put32(mbr+462+8,20100000); put32(mbr+462+12,2097152);
-    mbr[478+4]=0x82; put32(mbr+478+8,22300000); put32(mbr+478+12,1048576);
+    mbr[446+4]=0x83; put32(mbr+446+8,2048); put32(mbr+446+12,18*1024*1024);
+    mbr[462+4]=0x83; put32(mbr+462+8,19000000); put32(mbr+462+12,2097152);
+    mbr[478+4]=0x82; put32(mbr+478+8,21200000); put32(mbr+478+12,1048576);
     mbr[510]=0x55; mbr[511]=0xaa;
     T(pwrite(w,mbr,512,0)==512); T(fsync(w)==0); close(w);
     int fd=open(path,O_RDONLY|O_CLOEXEC); T(fd>=0); if(fd<0) return 1;
