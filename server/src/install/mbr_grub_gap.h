@@ -17,4 +17,19 @@ typedef enum {
 MggResult mbr_grub_gap_check(const DiskSnapshot *disk, uint64_t required_bytes,
                              uint64_t *available_sectors,
                              uint64_t *required_sectors);
+
+typedef enum {
+    MGC_OK = 0,
+    MGC_BAD_INPUT = -1,
+    MGC_IO = -2,
+    MGC_OCCUPIED = -3
+} MgcResult;
+
+/* Read-only content check for the exact contiguous GRUB write interval starting
+ * at byte zero. Every byte after the MBR sector and through the rounded-up
+ * audited write-set end must be zero; any existing content is treated as user
+ * data and blocks installation. Requires an O_RDONLY descriptor. */
+MgcResult mbr_grub_gap_contents_check_fd(int fd, uint64_t disk_sectors,
+                                         uint64_t write_set_bytes,
+                                         uint64_t *first_nonzero_lba);
 #endif
