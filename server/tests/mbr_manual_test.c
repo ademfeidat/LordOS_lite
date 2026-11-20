@@ -38,6 +38,7 @@ int main(void) {
     d.partitions[1].first_lba=2048; T(mm_decide(&f, &p) != NULL); d.partitions[1].first_lba=20973568;
     d.extended_last_lba=d.total_sectors; T(mm_decide(&f, &p) != NULL); d.extended_last_lba=42469375;
     d.extended_first_lba=0; T(mm_decide(&f, &p) != NULL); d.extended_first_lba=20973568;
+    d.partitions[0].first_lba=0; T(mm_decide(&f, &p) != NULL); d.partitions[0].first_lba=2048;
     d.extended_first_lba=42469376; T(mm_decide(&f, &p) != NULL); d.extended_first_lba=20973568;
     d.partitions[1].first_lba=42469376; T(mm_decide(&f, &p) != NULL); d.partitions[1].first_lba=20973568;
     d.partitions[1].is_logical=0; T(mm_decide(&f, &p) != NULL); d.partitions[1].is_logical=1;
