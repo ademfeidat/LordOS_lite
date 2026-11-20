@@ -75,6 +75,7 @@ SRC += $(DOC_SRC)
 # Per-app firewall (src/fw, docs/FIREWALL.md): rules, decision and names learned from DNS
 FW_SRC := src/fw/rules.c src/fw/dnsmap.c src/fw/fwmap.c src/fw/fwlists.c src/fw/fwsub.c src/ui/js_fw.c src/sec/netconn.c
 SRC += $(FW_SRC)
+SRC += src/install/mbr_device_identity.c
 OBJ := $(SRC:src/%.c=build/obj/%.o)
 HDR := $(wildcard src/*.h src/gpu/*.h src/ui/*.h src/term/*.h src/wl/*.h src/wasm/*.h src/sound/*.h src/pkg/*.h src/net/*.h src/install/*.h src/remote/*.h src/users/*.h src/sec/*.h src/monitor/*.h src/media/*.h src/app/*.h src/doc/*.h src/print/*.h) $(WL_GEN) $(APP_CLIENT_HDR)
 HDR += $(wildcard src/fw/*.h)
@@ -247,7 +248,8 @@ build/freespace-test: tests/freespace_test.c src/install/freespace.c src/install
 	@mkdir -p build
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -std=c11 -o $@ tests/freespace_test.c src/install/freespace.c
 INSTALL_DISK_SRC := src/hw/tabletpower.c src/install/freepart.c src/install/freespace.c src/install/manual.c src/install/manualpart.c src/install/mbr.c src/install/mbr_disk.c src/install/disk_snapshot.c src/install/mbr_manual.c src/install/mbr_busy.c
-INSTALL_DISK_HDR := src/hw/tabletpower.h src/install/install.h src/install/freepart.h src/install/freespace.h src/install/manual.h src/install/manualpart.h src/install/mbr.h src/install/mbr_disk.h src/install/disk_snapshot.h src/install/mbr_manual.h src/install/mbr_busy.h
+INSTALL_DISK_SRC += src/install/mbr_device_identity.c
+INSTALL_DISK_HDR := src/hw/tabletpower.h src/install/install.h src/install/freepart.h src/install/freespace.h src/install/manual.h src/install/manualpart.h src/install/mbr.h src/install/mbr_disk.h src/install/disk_snapshot.h src/install/mbr_manual.h src/install/mbr_busy.h src/install/mbr_device_identity.h
 build/install-plan-test: tests/install_plan_test.c src/install/install.c $(INSTALL_DISK_SRC) src/users/homedirs.c $(INSTALL_DISK_HDR)
 	@mkdir -p build
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -std=c11 -o $@ tests/install_plan_test.c $(INSTALL_DISK_SRC) src/users/homedirs.c -lcrypt
@@ -1225,4 +1227,11 @@ test: build/mbr-txn-journal-test
 build/mbr-txn-journal-test: tests/mbr_txn_journal_test.c src/install/mbr_txn_journal.c src/install/mbr_txn_journal.h src/install/mbr_txn_plan.c src/install/mbr_txn_plan.h src/pkg/crypto.c src/pkg/crypto.h
 	@mkdir -p build
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -Werror -std=c11 -D_FILE_OFFSET_BITS=64 -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer -o $@ tests/mbr_txn_journal_test.c src/install/mbr_txn_journal.c src/install/mbr_txn_plan.c src/pkg/crypto.c -Wl,--wrap=fsync
+	./$@ || { rm -f $@; exit 1; }
+
+# Read-only whole-disk block-device identity proof. Tests reject regular files and character devices.
+test: build/mbr-device-identity-test
+build/mbr-device-identity-test: tests/mbr_device_identity_test.c src/install/mbr_device_identity.c src/install/mbr_device_identity.h
+	@mkdir -p build
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -Werror -std=c11 -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer -o $@ tests/mbr_device_identity_test.c src/install/mbr_device_identity.c
 	./$@ || { rm -f $@; exit 1; }
