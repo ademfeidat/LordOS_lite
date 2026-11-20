@@ -18,7 +18,8 @@ typedef struct {
 /* fd must already be open read-only. Fingerprint comparison, MBR parsing and
  * snapshot conversion share one probe result (no second probe/TOCTOU window).
  * busy is a fresh fail-closed fact from the caller. grub_core_bytes must be
- * measured for the exact shipped GRUB image. Preserved /home requires its
+ * measured for the exact shipped GRUB image; grub_write_set_bytes must come
+ * from its verified provenance manifest. Preserved /home requires its
  * detected filesystem and canonical UUID. Returns NULL on success, otherwise
  * a localized installer error key. A successful result is still dry-run only. */
 const char *mbr_install_plan_build_fd(int fd, uint64_t disk_sectors,
@@ -29,6 +30,7 @@ const char *mbr_install_plan_build_fd(int fd, uint64_t disk_sectors,
                                       const char *const fstype[DS_MAX_PARTITIONS + 1],
                                       const char *preserved_home_uuid,
                                       uint64_t grub_core_bytes,
+                                      uint64_t grub_write_set_bytes,
                                       int replacement_confirmed,
                                       MipPlan *out);
 
