@@ -1144,7 +1144,7 @@ test: build/wallpaper-image-test
 test: build/mbr-grub-backup-test
 build/mbr-grub-backup-test: tests/mbr_grub_backup_test.c src/install/mbr_grub_backup.c src/install/mbr_grub_backup.h src/install/disk_snapshot.h src/pkg/crypto.c src/pkg/crypto.h
 	@mkdir -p build
-	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -std=c11 -D_FILE_OFFSET_BITS=64 -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer -o $@ tests/mbr_grub_backup_test.c src/install/mbr_grub_backup.c src/pkg/crypto.c
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -std=c11 -D_FILE_OFFSET_BITS=64 -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer -o $@ tests/mbr_grub_backup_test.c src/install/mbr_grub_backup.c src/pkg/crypto.c -Wl,--wrap=pwrite -Wl,--wrap=fsync
 	./$@ || { rm -f $@; exit 1; }
 
 # Read-only DOS/MBR parser tests. This target uses only the C library and never opens a disk.
