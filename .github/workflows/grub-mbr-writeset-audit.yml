@@ -45,7 +45,10 @@ jobs:
               apt-get update
               apt-get install -y grub-common grub2-common grub-pc-bin strace fdisk util-linux e2fsprogs python3
               sh /workspace/tools/iso/check-grub-mbr-write-set.sh
+              before=$(find /usr/share/lordos -mindepth 1 -maxdepth 1 -printf '%f\\n' | sort)
               sh /workspace/tools/iso/check-grub-mbr-write-set.sh --verify
+              after=$(find /usr/share/lordos -mindepth 1 -maxdepth 1 -printf '%f\\n' | sort)
+              test "$before" = "$after"
               cp /usr/share/lordos/grub-mbr-write-set.txt /tmp/grub-mbr-write-set.good
               printf 'tampered=1\n' >> /usr/share/lordos/grub-mbr-write-set.txt
               if sh /workspace/tools/iso/check-grub-mbr-write-set.sh --verify; then
