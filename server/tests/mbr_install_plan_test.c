@@ -35,6 +35,10 @@ int main(void) {
     T(plan.disk.kind==DS_TABLE_MBR);
     T(plan.mounts.action_count==2 && plan.mounts.actions[0].kind==MP_FORMAT_ROOT_EXT4);
     T(plan.grub.writes_authorized==0 && plan.writes_authorized==0);
+    MbrDeviceIdentity expected_disk={8,0,sectors,512}, observed_disk;
+    T(!strcmp(mbr_install_plan_build_block_fd(fd,&expected_disk,tag,1,0,
+                                               &selection,fs,NULL,58880,1,&plan),
+              "install.manual.mbr.deviceIdentity"));
 
     selection.home_part=2;
     fs[2]="ext4";
