@@ -92,16 +92,19 @@ MjtResult mjt_apply(MjtPlan *p, MjtEvent ev) {
         p->mount_mask |= MJT_MOUNT_HOME;
         break;
     case MJT_EV_HOME_UNMOUNTED:
-        if (p->state != MJT_MOUNTS_ACTIVE || !(p->mount_mask & MJT_MOUNT_HOME))
+        if ((p->state != MJT_MOUNTS_ACTIVE && p->state != MJT_GRUB_WRITE_STARTED &&
+             p->state != MJT_GRUB_VERIFIED && p->state != MJT_RECOVERY_REQUIRED) ||
+            !(p->mount_mask & MJT_MOUNT_HOME))
             return reject(MJT_ORDER);
         p->mount_mask &= ~MJT_MOUNT_HOME;
         break;
     case MJT_EV_ROOT_UNMOUNTED:
-        if (p->state != MJT_MOUNTS_ACTIVE || !(p->mount_mask & MJT_MOUNT_ROOT) ||
-            (p->mount_mask & MJT_MOUNT_HOME))
+        if ((p->state != MJT_MOUNTS_ACTIVE && p->state != MJT_GRUB_WRITE_STARTED &&
+             p->state != MJT_GRUB_VERIFIED && p->state != MJT_RECOVERY_REQUIRED) ||
+            !(p->mount_mask & MJT_MOUNT_ROOT) || (p->mount_mask & MJT_MOUNT_HOME))
             return reject(MJT_ORDER);
         p->mount_mask &= ~MJT_MOUNT_ROOT;
-        p->state = MJT_FILESYSTEMS_READY;
+        if (p->state == MJT_MOUNTS_ACTIVE) p->state = MJT_FILESYSTEMS_READY;
         break;
     case MJT_EV_GRUB_WRITE_BEGIN:
         if (p->state != MJT_MOUNTS_ACTIVE || !(p->mount_mask & MJT_MOUNT_ROOT) ||
@@ -134,10 +137,10 @@ MjtResult mjt_apply(MjtPlan *p, MjtEvent ev) {
         p->failure_seen = 1;
         break;
     case MJT_EV_RESTORE_VERIFIED:
-        if (p->state != MJT_RECOVERY_REQUIRED || !p->grub_write_started)
+        if (p->state != MJT_RECOVERY_REQUIRED || !p->grub_write_started ||
+            p->mount_mask != 0)
             return reject(MJT_ORDER);
         p->state = MJT_RESTORED;
-        p->mount_mask = 0;
         break;
     default:
         return MJT_INVALID;
