@@ -23,6 +23,7 @@ typedef struct {
     /* Exact selected MBR partition identities, captured before any mutation. */
     uint32_t root_part, home_part, swap_part, swap_file_mib;
     uint32_t root_major, root_minor, home_major, home_minor, swap_major, swap_minor;
+    char backup_sha256[65]; /* digest of the complete GRUB backup file */
 } MjtJournalRecord;
 
 typedef struct {
