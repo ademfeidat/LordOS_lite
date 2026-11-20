@@ -751,12 +751,39 @@ of user data. A process interruption/power loss recovery protocol is a separate
 requirement; the current GRUB backup API explicitly supports immediate
 same-process rollback only and is not a reboot-time recovery mechanism.
 
-### Current implementation boundary
+## Write-disabled MBR transaction state planner (2026-11-20)
 
-The above is an audit-derived contract, not an implementation claim. No
-transaction executor, durable journal, mount lifecycle, formatting operation,
-or GRUB invocation has been added for MBR. The `manual-mbr` rejection in
-`install.c` remains in place. Before implementation, the next pure milestone
-is a transaction-state planner and fault-injection model that describes
-preflight, backup verification, mutation boundaries, mount tracking, rollback
-status and interruption recovery without performing device I/O.
+Added `mbr_txn_plan.c/.h`, a pure state machine that models the required
+ordering without opening a disk, writing a journal, formatting filesystems,
+mounting partitions, invoking GRUB, or authorizing writes. Its accepted
+sequence is:
+
+- fresh preflight -> durable GRUB backup -> durable transaction journal;
+- explicit root-format operation, then only the separately consented optional
+  /home format and swap initialization;
+- filesystem-ready -> root mount -> optional /home mount;
+- GRUB write-start marker -> verified GRUB result -> reverse-order unmount;
+- commit only after every target mount is verified absent.
+
+The planner rejects out-of-order events, missing per-operation consent,
+mounting /home before root, GRUB before the required mounts, and commit while
+any target mount remains active. A failure before GRUB starts is not described
+as a successful filesystem rollback: if any format/init operation began,
+recovery classification requires filesystem inspection. A failure after the
+GRUB write-start marker requires byte-exact GRUB-range restoration. The
+restore-complete event is rejected until the caller has recorded both mounts
+as unmounted.
+
+The unit tests exercise successful ordering, preserved /home consent, absent
+swap consent, invalid transitions, mount ordering, failures before journal
+durability, failures during formatting, failures after GRUB-write start, and
+the requirement to unmount before declaring rollback complete. These are
+state-machine tests, not simulated power cuts or real syscall fault injection.
+
+**Important boundary:** this is not yet a durable journal implementation.
+The future privileged executor must atomically persist each accepted state
+transition (write temporary record, fsync file, rename, fsync containing
+directory), validate record version/sequence/disk identity/fingerprint at
+startup, and make recovery idempotent. It must also inject failures at every
+write/fsync/rename/mount/format/GRUB boundary and prove the recovery decision.
+The existing `manual-mbr` rejection in `install.c` remains in place.
