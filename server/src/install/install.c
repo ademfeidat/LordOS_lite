@@ -342,8 +342,8 @@ void install_act_disks(const AdminReq *r, const char *arg, size_t len) {
             fsp_part_path(k->name, part->number, partdev, sizeof partdev);
             const char *partname = strrchr(partdev, '/') + 1;
             lsblk_partition_fstype(out, partname, partfs, sizeof partfs);
-            fprintf(f, "%s{\\"name\\":", q ? "," : ""); json_str(f, partname);
-            fprintf(f, ",\\"num\\":%u,\\"start\\":%llu,\\"end\\":%llu,\\"type\\":%u,\\"logical\\":%s,\\"busy\\":%s,\\"fs\\":",
+            fprintf(f, "%s{\"name\":", q ? "," : ""); json_str(f, partname);
+            fprintf(f, ",\"num\":%u,\"start\":%llu,\"end\":%llu,\"type\":%u,\"logical\":%s,\"busy\":%s,\"fs\":",
                     part->number, (unsigned long long)part->first_lba,
                     (unsigned long long)part->last_lba, part->type_code,
                     part->is_logical ? "true" : "false",
