@@ -1186,7 +1186,7 @@ build/mbr-mount-plan-test: tests/mbr_mount_plan_test.c src/install/mbr_mount_pla
 
 # Single-snapshot MBR install orchestration; read-only dry-run only.
 test: build/mbr-install-plan-test
-build/mbr-install-plan-test: tests/mbr_install_plan_test.c src/install/mbr_install_plan.c src/install/mbr_install_plan.h src/install/mbr_preflight.h src/install/mbr_preflight.c src/install/mbr_mount_plan.c src/install/mbr_grub_guard.c src/install/mbr_grub_gap.c src/install/mbr_disk.c src/install/mbr.c src/install/disk_snapshot.c src/install/mbr_manual.c
+build/mbr-install-plan-test: tests/mbr_install_plan_test.c src/install/mbr_install_plan.c src/install/mbr_install_plan.h src/install/mbr_mount_plan.c src/install/mbr_grub_guard.c src/install/mbr_grub_gap.c src/install/mbr_disk.c src/install/mbr.c src/install/disk_snapshot.c src/install/mbr_manual.c
 	@mkdir -p build
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -std=c11 -D_FILE_OFFSET_BITS=64 -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer -o $@ tests/mbr_install_plan_test.c src/install/mbr_install_plan.c src/install/mbr_mount_plan.c src/install/mbr_grub_guard.c src/install/mbr_grub_gap.c src/install/mbr_disk.c src/install/mbr.c src/install/disk_snapshot.c src/install/mbr_manual.c
 	./$@ || { rm -f $@; exit 1; }
