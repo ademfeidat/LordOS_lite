@@ -643,6 +643,19 @@ static const char *validate_mbr_manual(Plan *pl) {
         return "install.manual.mbr.needBios";
     if (!pl->mbr_tag[0]) return "install.manual.mbr.badPlan";
 
+    /* Do not derive /dev/<name> from untrusted JSON until the name is proven
+     * to be one of the enumerated whole-disk devices. */
+    Disk disks[32];
+    int count = list_disks(disks, 32), found = 0;
+    for (int i = 0; i < count; i++) {
+        if (!strcmp(disks[i].name, pl->disk)) {
+            found = 1;
+            if (disks[i].size < MIN_DISK) return "install.diskTooSmall";
+            break;
+        }
+    }
+    if (!found) return "install.diskNotListed";
+
     char dev[PATH_MAX], sys[PATH_MAX], value[32];
     int n = snprintf(dev, sizeof dev, "/dev/%s", pl->disk);
     if (n < 0 || (size_t)n >= sizeof dev) return "install.manual.mbr.badPlan";
