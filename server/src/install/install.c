@@ -48,6 +48,7 @@
 #include "manualpart.h"
 #include "mbr_disk.h"
 #include "mbr_busy.h"
+#include "mbr_preflight.h"
 #include "disk_snapshot.h"
 #include "../users/homedirs.h"
 #include "../hw/tabletpower.h"
@@ -632,9 +633,94 @@ static int manual_plan(const Plan *pl, MpPlan *m) {
     return 0;
 }
 
+
+/* MBR manual mode is connected to the same read-only disk snapshot gate used
+ * by the dedicated MBR validator. This is deliberately preflight-only: until
+ * the transactional formatter/GRUB writer is integrated, a passing plan is
+ * still refused before any partition, filesystem or boot-sector mutation. */
+static const char *validate_mbr_manual(Plan *pl) {
+    if (access("/sys/firmware/efi", F_OK) == 0)
+        return "install.manual.mbr.needBios";
+    if (!pl->mbr_tag[0]) return "install.manual.mbr.badPlan";
+
+    char dev[PATH_MAX], sys[PATH_MAX], value[32];
+    int n = snprintf(dev, sizeof dev, "/dev/%s", pl->disk);
+    if (n < 0 || (size_t)n >= sizeof dev) return "install.manual.mbr.badPlan";
+    n = snprintf(sys, sizeof sys, "/sys/block/%s/size", pl->disk);
+    if (n < 0 || (size_t)n >= sizeof sys || read_line(sys, value, sizeof value))
+        return "install.manual.mbr.badTable";
+    errno = 0;
+    char *end = NULL;
+    unsigned long long sectors = strtoull(value, &end, 10);
+    if (errno || !end || *end || !sectors) return "install.manual.mbr.badTable";
+
+    n = snprintf(sys, sizeof sys, "/sys/block/%s/queue/logical_block_size", pl->disk);
+    if (n < 0 || (size_t)n >= sizeof sys || read_line(sys, value, sizeof value))
+        return "install.manual.mbr.badTable";
+    errno = 0;
+    unsigned long lsec = strtoul(value, &end, 10);
+    if (errno || !end || *end || lsec != MBR_SECTOR_SIZE)
+        return "install.manual.mbr.badTable";
+
+    int fd = open(dev, O_RDONLY | O_CLOEXEC | O_NOFOLLOW);
+    if (fd < 0) return "install.manual.mbr.badTable";
+
+    const char *why = NULL;
+    MbrTable table;
+    DiskSnapshot snapshot;
+    char observed[40];
+    if (mbr_probe_fd(fd, sectors, (unsigned)lsec, &table,
+                     observed, sizeof observed) != MBR_OK ||
+        ds_from_mbr(&table, sectors, (unsigned)lsec, &snapshot)) {
+        close(fd);
+        return "install.manual.mbr.badTable";
+    }
+    int busy = mbr_snapshot_busy_at("", pl->disk, &snapshot);
+
+    char lsout[16384] = "";
+    const char *const argv[] = {
+        "/usr/bin/lsblk", "-n", "-P", "-b", "-o",
+        "NAME,TYPE,FSTYPE", dev, NULL
+    };
+    if (admin_run_capture(argv, lsout, sizeof lsout) != 0) {
+        close(fd);
+        return "install.manual.mbr.badTable";
+    }
+    char fs_storage[DS_MAX_PARTITIONS + 1][16];
+    const char *fstype[DS_MAX_PARTITIONS + 1];
+    memset(fs_storage, 0, sizeof fs_storage);
+    for (unsigned i = 0; i <= DS_MAX_PARTITIONS; i++) fstype[i] = fs_storage[i];
+    for (unsigned i = 1; i <= DS_MAX_PARTITIONS; i++) {
+        char part[PATH_MAX];
+        part_path(pl->disk, (int)i, part, sizeof part);
+        const char *name = strrchr(part, '/') + 1;
+        lsblk_partition_fstype(lsout, name, fs_storage[i], sizeof fs_storage[i]);
+    }
+
+    MmPlan selection;
+    if (mm_plan_from_fields(pl->root_part, pl->home_part, pl->swap_part,
+                            pl->root_format, pl->root_format_seen,
+                            pl->home_format, pl->swap, &selection))
+        why = "install.manual.mbr.badPlan";
+    else
+        why = mbr_manual_preflight_fd(fd, sectors, (unsigned)lsec,
+                                      pl->mbr_tag, 1, busy, &selection,
+                                      fstype, &snapshot);
+    close(fd);
+    return why;
+}
+
 static const char *validate(Plan *pl) {
-    /* Explicit fail-closed gate: manual-mbr has parser/preflight helpers, not a write path. */
-    if (!strcmp(pl->mode, "manual-mbr")) return "install.manual.mbr.notReady";
+    /* Manual MBR now reaches the server-side, read-only preflight. It remains
+     * non-installable until the journaled format/mount/GRUB transaction exists. */
+    if (!strcmp(pl->mode, "manual-mbr")) {
+        const char *person = validate_person(pl);
+        if (person) return person;
+        if (pl->swap < 0 || pl->swap > 16384) return "install.badSwap";
+        const char *mbr_why = validate_mbr_manual(pl);
+        if (mbr_why) return mbr_why;
+        return "install.manual.mbr.notReady";
+    }
     if (fsp_mode(pl->mode) < 0) return "install.badMode";
     Disk disks[32];
     int n = list_disks(disks, 32), found = 0;
